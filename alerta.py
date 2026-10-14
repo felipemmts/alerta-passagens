@@ -465,9 +465,11 @@ def enviar_email(assunto, corpo):
     # Secret pode ter sido colado com quebra de linha: remove tudo isso.
     senha = "".join(os.environ["EMAIL_SENHA"].split())
     destino = os.environ["EMAIL_DESTINO"].strip()
-    if len(senha) != 16:
-        print(f"  aviso: EMAIL_SENHA tem {len(senha)} caracteres; a senha de app do Gmail tem 16",
-              file=sys.stderr)
+    # Diagnóstico sem expor as credenciais.
+    print(f"  e-mail: remetente @{remetente.rpartition('@')[2] or '(sem @!)'}, "
+          f"senha com {len(senha)} caracteres"
+          f"{'' if senha.isascii() and senha.isalpha() else ' (não são só letras: senha de app tem só letras)'}, "
+          f"destino @{destino.rpartition('@')[2] or '(sem @!)'}")
 
     msg = EmailMessage()
     msg["Subject"] = assunto
@@ -475,9 +477,31 @@ def enviar_email(assunto, corpo):
     msg["To"] = destino
     msg.set_content(corpo)
 
-    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORTA, context=ssl.create_default_context()) as smtp:
-        smtp.login(remetente, senha)
-        smtp.send_message(msg)
+    contexto = ssl.create_default_context()
+    try:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORTA, context=contexto, timeout=30) as smtp:
+            smtp.login(remetente, senha)
+            smtp.send_message(msg)
+            return
+    except smtplib.SMTPAuthenticationError as e:
+        raise RuntimeError(
+            f"Gmail recusou o login ({e.smtp_code}): confira EMAIL_REMETENTE e gere uma nova "
+            "senha de app em https://myaccount.google.com/apppasswords"
+        ) from e
+    except (smtplib.SMTPServerDisconnected, OSError) as e:
+        print(f"  porta {SMTP_PORTA} (SSL) falhou: {type(e).__name__}: {e}; tentando 587 (STARTTLS)",
+              file=sys.stderr)
+
+    try:
+        with smtplib.SMTP(SMTP_HOST, 587, timeout=30) as smtp:
+            smtp.starttls(context=contexto)
+            smtp.login(remetente, senha)
+            smtp.send_message(msg)
+    except smtplib.SMTPAuthenticationError as e:
+        raise RuntimeError(
+            f"Gmail recusou o login ({e.smtp_code}): confira EMAIL_REMETENTE e gere uma nova "
+            "senha de app em https://myaccount.google.com/apppasswords"
+        ) from e
 
 
 # --------------------------------------------------------------------------
