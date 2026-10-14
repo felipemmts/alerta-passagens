@@ -65,17 +65,44 @@ def _juntar(valor):
 def chave_rota(rota):
     if rota.get("nome"):
         return rota["nome"]
-    volta = _juntar(rota.get("volta")) or "so-ida"
+    ida = _juntar(rota.get("ida")) or f"{rota['ida_de']}_a_{rota['ida_ate']}"
+    if rota.get("estadia_dias"):
+        volta = f"{_juntar(rota['estadia_dias'])}d"
+    else:
+        volta = _juntar(rota.get("volta")) or "so-ida"
     return (f"{_juntar(rota['origem'])}-{_juntar(rota['destino'])}-"
-            f"{_juntar(rota['ida'])}-{volta}-{rota.get('adultos', 1)}ad")
+            f"{ida}-{volta}-{rota.get('adultos', 1)}ad")
+
+
+def _datas_ida(rota):
+    """Datas de ida: "ida" (valor ou lista) ou o intervalo "ida_de".."ida_ate"."""
+    if rota.get("ida_de"):
+        dia, fim = date.fromisoformat(rota["ida_de"]), date.fromisoformat(rota["ida_ate"])
+        datas = []
+        while dia <= fim:
+            datas.append(dia.isoformat())
+            dia += timedelta(days=1)
+        return datas
+    return _lista(rota["ida"])
+
+
+def _pares_ida_volta(rota):
+    """Pares (ida, volta). Com "estadia_dias", a volta é ida + estadia."""
+    idas = _datas_ida(rota)
+    if rota.get("estadia_dias"):
+        return [
+            (ida, (date.fromisoformat(ida) + timedelta(days=int(n))).isoformat())
+            for ida in idas for n in _lista(rota["estadia_dias"])
+        ]
+    return list(itertools.product(idas, _lista(rota.get("volta"))))
 
 
 def expandir(rota, hoje=None):
     """Lista as combinações (origem, destino, ida, volta) com ida a partir de hoje."""
     hoje = hoje or date.today()
     combos = []
-    for o, d, ida, volta in itertools.product(
-        _lista(rota["origem"]), _lista(rota["destino"]), _lista(rota["ida"]), _lista(rota.get("volta"))
+    for o, d, (ida, volta) in itertools.product(
+        _lista(rota["origem"]), _lista(rota["destino"]), _pares_ida_volta(rota)
     ):
         if date.fromisoformat(ida) < hoje:
             continue

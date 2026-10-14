@@ -6,6 +6,7 @@ Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-
 
 - `rotas.json`: moeda e lista de rotas (`origem`, `destino`, `ida`, `volta` opcional, `adultos`, `max_escalas` (`null` = qualquer), `preco_alvo`, e opcionalmente `nome` e `preco_excelente`).
   - `origem`, `destino`, `ida` e `volta` aceitam um valor ou uma lista. Todas as combinações são consultadas (com uma pausa de 3 s entre elas) e vale a mais barata, com um único e-mail por rota.
+  - Para datas flexíveis, use `ida_de` e `ida_ate` (todas as datas do intervalo) no lugar de `ida`, e `estadia_dias` (número ou lista) no lugar de `volta`: a volta será a ida mais a estadia.
   - Abaixo de `preco_alvo`, chega o aviso. Até `preco_excelente`, o assunto do e-mail vem marcado com 🔥.
 - `alerta.py`: busca o voo mais barato de cada rota e manda e-mail se o preço estiver abaixo do `preco_alvo`. Depois de um aviso, só avisa de novo se o preço cair ainda mais. Se o preço voltar a ficar acima do alvo, o histórico da rota é limpo.
 - `historico.json`: último preço avisado por rota.
