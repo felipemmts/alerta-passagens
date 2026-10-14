@@ -226,5 +226,15 @@
       "preco": 90,
       "volta": null
     }
+  ],
+  "São Paulo ⇄ Madri (jan–fev/2027)": [
+    {
+      "destino": "MAD",
+      "em": "2026-10-14T23:00:16+00:00",
+      "ida": "2027-01-30",
+      "origem": "GRU",
+      "preco": 750,
+      "volta": "2027-03-01"
+    }
   ]
 }
