@@ -174,6 +174,38 @@ def _pegar(dados, *indices):
     return dados
 
 
+def _eh_trecho(t):
+    return (isinstance(t, list) and len(t) > 6
+            and isinstance(t[3], str) and len(t[3]) == 3
+            and isinstance(t[6], str) and len(t[6]) == 3)
+
+
+def _eh_item_voo(x):
+    """[voo, [[_, preço], ...]] com voo[2] = lista de trechos."""
+    voo, preco = _pegar(x, 0), _pegar(x, 1, 0, 1)
+    trechos = _pegar(voo, 2)
+    return (isinstance(preco, int) and preco > 0 and isinstance(trechos, list)
+            and trechos and all(_eh_trecho(t) for t in trechos))
+
+
+def _procurar_itens(dados, profundidade=0):
+    if not isinstance(dados, list) or profundidade > 12:
+        return
+    if _eh_item_voo(dados):
+        yield dados
+        return
+    for x in dados:
+        yield from _procurar_itens(x, profundidade + 1)
+
+
+def _forma(payload):
+    """Resumo da estrutura de topo (para diagnóstico no log)."""
+    partes = []
+    for i, x in enumerate(payload[:12] if isinstance(payload, list) else []):
+        partes.append(f"{i}:{'None' if x is None else type(x).__name__ + (f'[{len(x)}]' if isinstance(x, list) else '')}")
+    return " ".join(partes)
+
+
 def parse_tolerante(html):
     """Parser alternativo ao da fast-flights 3.1.0.
 
@@ -199,11 +231,18 @@ def parse_tolerante(html):
         v = [*(v or []), None, None]
         return (v[0] or 0, v[1] or 0)
 
+    blocos = [b for b in (_pegar(payload, 2, 0), _pegar(payload, 3, 0)) if b]
+    if not blocos:
+        # Estrutura diferente da esperada: procura itens de voo em toda a página.
+        blocos = [list(_procurar_itens(payload))]
+        print(f"  estrutura da página: {_forma(payload)}; "
+              f"{len(blocos[0])} item(ns) de voo achados por busca ampla")
+
     resultados = []
-    for bloco in (_pegar(payload, 2, 0), _pegar(payload, 3, 0)):
+    for bloco in blocos:
         for item in bloco or []:
             voo, preco = _pegar(item, 0), _pegar(item, 1, 0, 1)
-            if not voo or not preco:
+            if not voo or not isinstance(preco, int) or not preco:
                 continue
             trechos = []
             for t in _pegar(voo, 2) or []:
@@ -315,14 +354,16 @@ def buscar_mais_barato(query):
     combo = getattr(query, "_combo", None)
     tentativas = [("fast-flights", query.params())]
     if combo:
-        tentativas.append(("formato Google", {
-            "tfs": tfs_formato_google(combo), "hl": query.language, "curr": query.currency,
-        }))
+        google = {"tfs": tfs_formato_google(combo), "hl": query.language, "curr": query.currency}
+        tentativas.append(("formato Google", google))
+        # Algumas datas falham numa execução e funcionam na seguinte: mais uma
+        # tentativa depois de uma pausa maior.
+        tentativas.append(("formato Google, 2ª tentativa", google))
 
     ultimo_erro = None
     for i, (nome, params) in enumerate(tentativas):
         if i and PAUSA_SEGUNDOS:
-            time.sleep(PAUSA_SEGUNDOS)
+            time.sleep(PAUSA_SEGUNDOS * (4 if i == 2 else 1))
         html = _baixar(params)
         try:
             resultados = _extrair(html)
@@ -419,9 +460,14 @@ def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=
 
 
 def enviar_email(assunto, corpo):
-    remetente = os.environ["EMAIL_REMETENTE"]
-    senha = os.environ["EMAIL_SENHA"]
-    destino = os.environ["EMAIL_DESTINO"]
+    remetente = os.environ["EMAIL_REMETENTE"].strip()
+    # A senha de app do Gmail aparece com espaços ("abcd efgh ijkl mnop") e o
+    # Secret pode ter sido colado com quebra de linha: remove tudo isso.
+    senha = "".join(os.environ["EMAIL_SENHA"].split())
+    destino = os.environ["EMAIL_DESTINO"].strip()
+    if len(senha) != 16:
+        print(f"  aviso: EMAIL_SENHA tem {len(senha)} caracteres; a senha de app do Gmail tem 16",
+              file=sys.stderr)
 
     msg = EmailMessage()
     msg["Subject"] = assunto
