@@ -2,25 +2,36 @@
 
 Lê as rotas de rotas.json, busca o voo mais barato de cada uma e envia um
 e-mail pelo Gmail quando o preço fica abaixo do preco_alvo (ou cai de novo
-depois de um aviso). O último preço avisado fica em historico.json.
+depois de um aviso). O último preço avisado fica em historico.json e o
+menor preço de cada consulta fica em consultas.json.
+
+Em rotas.json, origem, destino, ida e volta aceitam um valor ou uma lista:
+todas as combinações são consultadas e vale a mais barata.
 """
 
+import itertools
 import json
 import os
 import smtplib
 import ssl
+import statistics
 import sys
+import time
 import traceback
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent
 ARQ_ROTAS = BASE / "rotas.json"
 ARQ_HISTORICO = BASE / "historico.json"
+ARQ_CONSULTAS = BASE / "consultas.json"
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORTA = 465
+
+DIAS_CONSULTAS = 90  # quanto tempo de consultas guardar em consultas.json
+PAUSA_SEGUNDOS = float(os.environ.get("PAUSA_SEGUNDOS", "3"))  # entre buscas no Google
 
 
 # --------------------------------------------------------------------------
@@ -41,9 +52,37 @@ def salvar_json(caminho, dados):
     )
 
 
+def _lista(valor):
+    if valor is None:
+        return [None]
+    return list(valor) if isinstance(valor, (list, tuple)) else [valor]
+
+
+def _juntar(valor):
+    return "/".join(str(v) for v in _lista(valor)) if valor else ""
+
+
 def chave_rota(rota):
-    volta = rota.get("volta") or "so-ida"
-    return f"{rota['origem']}-{rota['destino']}-{rota['ida']}-{volta}-{rota.get('adultos', 1)}ad"
+    if rota.get("nome"):
+        return rota["nome"]
+    volta = _juntar(rota.get("volta")) or "so-ida"
+    return (f"{_juntar(rota['origem'])}-{_juntar(rota['destino'])}-"
+            f"{_juntar(rota['ida'])}-{volta}-{rota.get('adultos', 1)}ad")
+
+
+def expandir(rota, hoje=None):
+    """Lista as combinações (origem, destino, ida, volta) com ida a partir de hoje."""
+    hoje = hoje or date.today()
+    combos = []
+    for o, d, ida, volta in itertools.product(
+        _lista(rota["origem"]), _lista(rota["destino"]), _lista(rota["ida"]), _lista(rota.get("volta"))
+    ):
+        if date.fromisoformat(ida) < hoje:
+            continue
+        if volta and date.fromisoformat(volta) <= date.fromisoformat(ida):
+            continue
+        combos.append({**rota, "origem": o, "destino": d, "ida": ida, "volta": volta})
+    return combos
 
 
 # --------------------------------------------------------------------------
@@ -51,8 +90,7 @@ def chave_rota(rota):
 # --------------------------------------------------------------------------
 
 def rota_expirada(rota, hoje=None):
-    hoje = hoje or date.today()
-    return date.fromisoformat(rota["ida"]) < hoje
+    return not expandir(rota, hoje)
 
 
 def decidir_aviso(preco, preco_alvo, ultimo_avisado):
@@ -207,22 +245,40 @@ def resumir_voo(voo):
     }
 
 
-def montar_email(rota, moeda, preco, resumo, link, ultimo_avisado):
-    trajeto = f"{rota['origem']} → {rota['destino']}"
-    assunto = f"✈️ {trajeto}: {preco} {moeda} (alvo {rota['preco_alvo']} {moeda})"
+def estatisticas(consultas):
+    precos = [c["preco"] for c in consultas]
+    if not precos:
+        return None
+    return {"n": len(precos), "min": min(precos), "mediana": int(statistics.median(precos))}
 
-    datas = f"Ida {rota['ida']}" + (f" · Volta {rota['volta']}" if rota.get("volta") else " (só ida)")
+
+def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=None):
+    trajeto = f"{combo['origem']} → {combo['destino']}"
+    excelente = rota.get("preco_excelente")
+    selo = "🔥 PREÇO EXCELENTE" if excelente and preco <= excelente else "✈️"
+    titulo = f"{rota['nome']}: " if rota.get("nome") else ""
+    assunto = f"{selo} {titulo}{trajeto} {preco} {moeda} (alvo {rota['preco_alvo']} {moeda})"
+
+    datas = f"Ida {combo['ida']}" + (f" · Volta {combo['volta']}" if combo.get("volta") else " (só ida)")
     escalas = "direto" if resumo["escalas"] == 0 else (
         f"{resumo['escalas']} ({', '.join(resumo['conexoes'])})"
     )
+    faixa = f"{rota['preco_alvo']} {moeda}"
+    if excelente:
+        faixa += f" (excelente: até {excelente} {moeda})"
     linhas = [
         f"Passagem abaixo do preço-alvo: {trajeto}",
         "",
         f"Preço:      {preco} {moeda} ({rota.get('adultos', 1)} adulto(s))",
-        f"Preço-alvo: {rota['preco_alvo']} {moeda}",
+        f"Preço-alvo: {faixa}",
     ]
     if ultimo_avisado is not None:
         linhas.append(f"Último aviso: {ultimo_avisado} {moeda} (o preço caiu de novo)")
+    if stats:
+        linhas.append(
+            f"Histórico:  mínimo {stats['min']} / mediana {stats['mediana']} {moeda} "
+            f"em {stats['n']} consulta(s) dos últimos {DIAS_CONSULTAS} dias"
+        )
     linhas += [
         f"Datas:      {datas}",
         f"Companhia:  {resumo['companhia']}",
@@ -255,23 +311,68 @@ def enviar_email(assunto, corpo):
 # Execução
 # --------------------------------------------------------------------------
 
-def processar_rota(rota, moeda, historico, buscar=None, enviar=None, montar=None):
+def descrever(combo):
+    volta = f" volta {combo['volta']}" if combo.get("volta") else ""
+    return f"{combo['origem']}→{combo['destino']} ida {combo['ida']}{volta}"
+
+
+def buscar_combinacoes(chave, combos, moeda, buscar, montar):
+    """Busca cada combinação e devolve (combo, query, voo) da mais barata.
+
+    Falhas individuais são registradas e ignoradas; só lança exceção se
+    todas as combinações falharem.
+    """
+    melhor, erros = None, []
+    for i, combo in enumerate(combos):
+        if i and PAUSA_SEGUNDOS:
+            time.sleep(PAUSA_SEGUNDOS)  # evita bombardear o Google
+        try:
+            query = montar(combo, moeda)
+            voo = buscar(query)
+        except Exception as e:
+            erros.append(e)
+            print(f"[{chave}]   {descrever(combo)}: ERRO {type(e).__name__}: {e}", file=sys.stderr)
+            continue
+        print(f"[{chave}]   {descrever(combo)}: {int(voo.price)} {moeda}")
+        if melhor is None or voo.price < melhor[2].price:
+            melhor = (combo, query, voo)
+    if melhor is None:
+        raise erros[-1]
+    if erros:
+        print(f"[{chave}]   {len(erros)} de {len(combos)} busca(s) falharam")
+    return melhor
+
+
+def processar_rota(rota, moeda, historico, buscar=None, enviar=None, montar=None,
+                   consultas=None, hoje=None):
     """Processa uma rota. Retorna True se avisou. Lança exceção em falha."""
     buscar = buscar or buscar_mais_barato
     enviar = enviar or enviar_email
     montar = montar or montar_query
+    consultas = consultas if consultas is not None else {}
 
     chave = chave_rota(rota)
-    query = montar(rota, moeda)
-    voo = buscar(query)
+    combo, query, voo = buscar_combinacoes(chave, expandir(rota, hoje), moeda, buscar, montar)
     preco = int(voo.price)
+
+    registros = consultas.setdefault(chave, [])
+    registros.append({
+        "em": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "preco": preco,
+        "origem": combo["origem"],
+        "destino": combo["destino"],
+        "ida": combo["ida"],
+        "volta": combo.get("volta"),
+    })
 
     anterior = historico.get(chave, {}).get("ultimo_preco_avisado")
     avisar, novo = decidir_aviso(preco, rota["preco_alvo"], anterior)
-    print(f"[{chave}] menor preço: {preco} {moeda} (alvo {rota['preco_alvo']}, último aviso {anterior})")
+    print(f"[{chave}] menor preço: {preco} {moeda} em {descrever(combo)} "
+          f"(alvo {rota['preco_alvo']}, último aviso {anterior})")
 
     if avisar:
-        assunto, corpo = montar_email(rota, moeda, preco, resumir_voo(voo), query.url(), anterior)
+        assunto, corpo = montar_email(rota, combo, moeda, preco, resumir_voo(voo), query.url(),
+                                      anterior, estatisticas(registros))
         enviar(assunto, corpo)
         print(f"[{chave}] e-mail enviado.")
 
@@ -291,6 +392,7 @@ def main(buscar=None, enviar=None, montar=None, hoje=None):
     moeda = config.get("moeda", "EUR")
     rotas = config.get("rotas", [])
     historico = carregar_json(ARQ_HISTORICO, {})
+    consultas = carregar_json(ARQ_CONSULTAS, {})
 
     ativas = [r for r in rotas if not rota_expirada(r, hoje)]
     for r in rotas:
@@ -298,21 +400,30 @@ def main(buscar=None, enviar=None, montar=None, hoje=None):
             print(f"[{chave_rota(r)}] ignorada: data de ida já passou.")
             historico.pop(chave_rota(r), None)
 
+    def salvar():
+        salvar_json(ARQ_HISTORICO, historico)
+        limite = (datetime.now(timezone.utc) - timedelta(days=DIAS_CONSULTAS)).isoformat()
+        for chave in list(consultas):
+            consultas[chave] = [c for c in consultas[chave] if c["em"] >= limite]
+            if not consultas[chave]:
+                del consultas[chave]
+        salvar_json(ARQ_CONSULTAS, consultas)
+
     if not ativas:
         print("Nenhuma rota ativa.")
-        salvar_json(ARQ_HISTORICO, historico)
+        salvar()
         return 0
 
     falhas = 0
     for rota in ativas:
         try:
-            processar_rota(rota, moeda, historico, buscar, enviar, montar)
+            processar_rota(rota, moeda, historico, buscar, enviar, montar, consultas, hoje)
         except Exception as e:  # uma rota com erro não derruba as outras
             falhas += 1
             print(f"[{chave_rota(rota)}] ERRO: {type(e).__name__}: {e}", file=sys.stderr)
             traceback.print_exc()
 
-    salvar_json(ARQ_HISTORICO, historico)
+    salvar()
 
     if falhas == len(ativas):
         print("Todas as rotas falharam.", file=sys.stderr)

@@ -4,9 +4,13 @@ Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-
 
 ## Como funciona
 
-- `rotas.json`: moeda e lista de rotas (`origem`, `destino`, `ida`, `volta` opcional, `adultos`, `max_escalas` (`null` = qualquer), `preco_alvo`).
+- `rotas.json`: moeda e lista de rotas (`origem`, `destino`, `ida`, `volta` opcional, `adultos`, `max_escalas` (`null` = qualquer), `preco_alvo`, e opcionalmente `nome` e `preco_excelente`).
+  - `origem`, `destino`, `ida` e `volta` aceitam um valor ou uma lista. Todas as combinações são consultadas (com uma pausa de 3 s entre elas) e vale a mais barata, com um único e-mail por rota.
+  - Abaixo de `preco_alvo`, chega o aviso. Até `preco_excelente`, o assunto do e-mail vem marcado com 🔥.
 - `alerta.py`: busca o voo mais barato de cada rota e manda e-mail se o preço estiver abaixo do `preco_alvo`. Depois de um aviso, só avisa de novo se o preço cair ainda mais. Se o preço voltar a ficar acima do alvo, o histórico da rota é limpo.
-- `historico.json`: último preço avisado por rota. O workflow faz commit desse arquivo de volta no repositório.
+- `historico.json`: último preço avisado por rota.
+- `consultas.json`: menor preço encontrado em cada execução (com a combinação), guardado por 90 dias. O e-mail mostra o mínimo e a mediana desse período.
+- O workflow faz commit de `historico.json` e `consultas.json` de volta no repositório.
 - Rotas com data de ida já passada são ignoradas. Um erro numa rota não afeta as outras. Se todas falharem, o job termina com erro.
 
 ## Configuração
