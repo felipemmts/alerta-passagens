@@ -1,0 +1,14 @@
+{
+  "moeda": "EUR",
+  "rotas": [
+    {
+      "origem": "SVQ",
+      "destino": "GRU",
+      "ida": "2026-12-10",
+      "volta": "2027-01-07",
+      "adultos": 1,
+      "max_escalas": null,
+      "preco_alvo": 700
+    }
+  ]
+}
