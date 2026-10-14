@@ -10,6 +10,7 @@ import os
 import smtplib
 import ssl
 import sys
+import traceback
 from datetime import date, datetime, timezone
 from email.message import EmailMessage
 from pathlib import Path
@@ -241,6 +242,7 @@ def main(buscar=None, enviar=None, montar=None, hoje=None):
         except Exception as e:  # uma rota com erro não derruba as outras
             falhas += 1
             print(f"[{chave_rota(rota)}] ERRO: {type(e).__name__}: {e}", file=sys.stderr)
+            traceback.print_exc()
 
     salvar_json(ARQ_HISTORICO, historico)
 
