@@ -9,6 +9,7 @@ Em rotas.json, origem, destino, ida e volta aceitam um valor ou uma lista:
 todas as combinações são consultadas e vale a mais barata.
 """
 
+import base64
 import itertools
 import json
 import os
@@ -26,6 +27,7 @@ BASE = Path(__file__).resolve().parent
 ARQ_ROTAS = BASE / "rotas.json"
 ARQ_HISTORICO = BASE / "historico.json"
 ARQ_CONSULTAS = BASE / "consultas.json"
+PASTA_DEBUG = BASE / "debug"
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORTA = 465
@@ -150,7 +152,7 @@ def montar_query(rota, moeda):
         trechos.append(
             FlightQuery(date=rota["volta"], from_airport=rota["destino"], to_airport=rota["origem"])
         )
-    return create_query(
+    query = create_query(
         flights=trechos,
         trip="round-trip" if rota.get("volta") else "one-way",
         passengers=Passengers(adults=int(rota.get("adultos", 1))),
@@ -158,6 +160,8 @@ def montar_query(rota, moeda):
         language="pt-BR",
         max_stops=rota.get("max_escalas"),
     )
+    query._combo = rota  # usado na tentativa alternativa de buscar_mais_barato
+    return query
 
 
 def _pegar(dados, *indices):
@@ -218,12 +222,66 @@ def parse_tolerante(html):
     return resultados
 
 
-def buscar_mais_barato(query):
-    """Retorna o resultado mais barato (objeto com .price/.airlines/.flights)."""
-    from fast_flights import fetch_flights_html
+# Formato completo usado pelas URLs do próprio Google Flights. A fast-flights
+# 3.1.0 omite o cabeçalho (campos 1 e 2) e o tipo de aeroporto (campo 1 dentro
+# de 13/14); quando a busca dela não traz voos, tentamos este formato.
+
+def _varint(n):
+    n &= (1 << 64) - 1
+    saida = bytearray()
+    while True:
+        b = n & 0x7F
+        n >>= 7
+        if n:
+            saida.append(b | 0x80)
+        else:
+            saida.append(b)
+            return bytes(saida)
+
+
+def _pb_int(campo, valor):
+    return _varint(campo << 3) + _varint(valor)
+
+
+def _pb_bytes(campo, dados):
+    if isinstance(dados, str):
+        dados = dados.encode()
+    return _varint((campo << 3) | 2) + _varint(len(dados)) + dados
+
+
+def tfs_formato_google(combo):
+    trechos = [(combo["ida"], combo["origem"], combo["destino"])]
+    if combo.get("volta"):
+        trechos.append((combo["volta"], combo["destino"], combo["origem"]))
+    msg = _pb_int(1, 28) + _pb_int(2, 2)
+    for dia, de, para in trechos:
+        trecho = (_pb_bytes(2, dia)
+                  + _pb_bytes(13, _pb_int(1, 1) + _pb_bytes(2, de))
+                  + _pb_bytes(14, _pb_int(1, 1) + _pb_bytes(2, para)))
+        if combo.get("max_escalas") is not None:
+            trecho += _pb_int(5, int(combo["max_escalas"]))
+        msg += _pb_bytes(3, trecho)
+    msg += _pb_int(8, 1) * int(combo.get("adultos", 1))  # adultos
+    msg += _pb_int(9, 1)                                  # econômica
+    msg += _pb_int(14, 1)
+    msg += _pb_bytes(16, _pb_int(1, -1))
+    msg += _pb_int(19, 1 if combo.get("volta") else 2)   # ida e volta / só ida
+    return base64.urlsafe_b64encode(msg).decode().rstrip("=")
+
+
+def _baixar(params):
+    from fast_flights.fetcher import URL
+    from primp import Client
+
+    cliente = Client(impersonate="chrome_145", impersonate_os="macos", referer=True,
+                     cookie_store=True)
+    return cliente.get(URL, params=params).text
+
+
+def _extrair(html):
+    """Lista de voos com preço a partir do HTML (lança RuntimeError se nenhum)."""
     from fast_flights.parser import parse
 
-    html = fetch_flights_html(query)  # mesma requisição feita por get_flights(query)
     try:
         resultados = list(parse(html))
     except Exception as e:
@@ -231,11 +289,53 @@ def buscar_mais_barato(query):
         resultados = []
     if not resultados:
         resultados = parse_tolerante(html)
+    com_preco = [r for r in resultados if getattr(r, "price", 0)]
+    if not com_preco:
+        raise RuntimeError(f"nenhum voo com preço encontrado ({len(resultados)} resultado(s) sem preço)")
+    return com_preco
 
-    resultados = [r for r in resultados if getattr(r, "price", 0)]
-    if not resultados:
-        raise RuntimeError("nenhum voo com preço encontrado")
-    return min(resultados, key=lambda r: r.price)
+
+def _diagnosticar(html, nome):
+    """Salva a página em debug/ e mostra um trecho no log."""
+    from selectolax.lexbor import LexborHTMLParser
+
+    PASTA_DEBUG.mkdir(exist_ok=True)
+    (PASTA_DEBUG / f"{nome}.html").write_text(html, encoding="utf-8")
+    arvore = LexborHTMLParser(html)
+    titulo = arvore.css_first("title")
+    script = arvore.css_first(r"script.ds\:1")
+    trecho = script.text()[:300] if script else html[:300]
+    print(f"  diagnóstico: título={titulo.text() if titulo else None!r}, {len(html)} bytes, "
+          f"salvo em debug/{nome}.html")
+    print(f"  trecho: {trecho!r}")
+
+
+def buscar_mais_barato(query):
+    """Retorna o resultado mais barato (objeto com .price/.airlines/.flights)."""
+    combo = getattr(query, "_combo", None)
+    tentativas = [("fast-flights", query.params())]
+    if combo:
+        tentativas.append(("formato Google", {
+            "tfs": tfs_formato_google(combo), "hl": query.language, "curr": query.currency,
+        }))
+
+    ultimo_erro = None
+    for i, (nome, params) in enumerate(tentativas):
+        if i and PAUSA_SEGUNDOS:
+            time.sleep(PAUSA_SEGUNDOS)
+        html = _baixar(params)
+        try:
+            resultados = _extrair(html)
+        except RuntimeError as e:
+            print(f"  [{nome}] {e}")
+            if combo:
+                _diagnosticar(html, f"{descrever(combo)}-{nome}".replace(" ", "_").replace("→", "-"))
+            ultimo_erro = e
+            continue
+        if i:
+            print(f"  [{nome}] funcionou")
+        return min(resultados, key=lambda r: r.price)
+    raise ultimo_erro
 
 
 # --------------------------------------------------------------------------
