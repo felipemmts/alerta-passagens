@@ -95,11 +95,79 @@ def montar_query(rota, moeda):
     )
 
 
+def _pegar(dados, *indices):
+    """Acessa dados[i][j]... devolvendo None se algum nível faltar."""
+    for i in indices:
+        try:
+            dados = dados[i]
+        except (IndexError, KeyError, TypeError):
+            return None
+    return dados
+
+
+def parse_tolerante(html):
+    """Parser alternativo ao da fast-flights 3.1.0.
+
+    O parser da biblioteca quebra quando o bloco "outros voos" (payload[3])
+    vem vazio e ignora o bloco "melhores voos" (payload[2]). Este lê os dois
+    e pula itens incompletos.
+    """
+    from fast_flights.model import Airport, Flights, SimpleDatetime, SingleFlight
+    from selectolax.lexbor import LexborHTMLParser
+
+    script = LexborHTMLParser(html).css_first(r"script.ds\:1")
+    if script is None:
+        raise RuntimeError("página do Google sem dados de voos (bloqueio ou consentimento?)")
+    js = script.text()
+    if "data:" not in js:
+        raise RuntimeError("formato inesperado da página do Google")
+    data = js.split("data:", 1)[1].rsplit(",", 1)[0]
+    if data.endswith("errorHasStatus: true"):
+        raise RuntimeError("Google não encontrou voos para esta busca")
+    payload = json.loads(data)
+
+    def hora(v):
+        v = [*(v or []), None, None]
+        return (v[0] or 0, v[1] or 0)
+
+    resultados = []
+    for bloco in (_pegar(payload, 2, 0), _pegar(payload, 3, 0)):
+        for item in bloco or []:
+            voo, preco = _pegar(item, 0), _pegar(item, 1, 0, 1)
+            if not voo or not preco:
+                continue
+            trechos = []
+            for t in _pegar(voo, 2) or []:
+                trechos.append(SingleFlight(
+                    from_airport=Airport(code=_pegar(t, 3), name=_pegar(t, 4)),
+                    to_airport=Airport(code=_pegar(t, 6), name=_pegar(t, 5)),
+                    departure=SimpleDatetime(date=tuple(_pegar(t, 20) or ()), time=hora(_pegar(t, 8))),
+                    arrival=SimpleDatetime(date=tuple(_pegar(t, 21) or ()), time=hora(_pegar(t, 10))),
+                    duration=_pegar(t, 11),
+                    plane_type=_pegar(t, 17),
+                ))
+            resultados.append(Flights(
+                type=_pegar(voo, 0), price=preco, airlines=_pegar(voo, 1) or [],
+                flights=trechos, carbon=None,
+            ))
+    return resultados
+
+
 def buscar_mais_barato(query):
     """Retorna o resultado mais barato (objeto com .price/.airlines/.flights)."""
-    from fast_flights import get_flights
+    from fast_flights import fetch_flights_html
+    from fast_flights.parser import parse
 
-    resultados = [r for r in get_flights(query) if getattr(r, "price", 0)]
+    html = fetch_flights_html(query)  # mesma requisição feita por get_flights(query)
+    try:
+        resultados = list(parse(html))
+    except Exception as e:
+        print(f"  parser da fast-flights falhou ({type(e).__name__}: {e}); usando parser tolerante")
+        resultados = []
+    if not resultados:
+        resultados = parse_tolerante(html)
+
+    resultados = [r for r in resultados if getattr(r, "price", 0)]
     if not resultados:
         raise RuntimeError("nenhum voo com preço encontrado")
     return min(resultados, key=lambda r: r.price)
