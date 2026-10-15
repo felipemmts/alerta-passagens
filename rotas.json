@@ -11,8 +11,8 @@
       "volta_ate": "2027-02-20",
       "adultos": 1,
       "max_escalas": null,
-      "preco_alvo": 1,
-      "preco_excelente": 1
+      "preco_alvo": 4850,
+      "preco_excelente": 4550
     },
     {
       "nome": "Soluções baratas: ida 15–25/01, volta 30 dias depois",
@@ -23,8 +23,8 @@
       "estadia_dias": 30,
       "adultos": 1,
       "max_escalas": null,
-      "preco_alvo": 1,
-      "preco_excelente": 1
+      "preco_alvo": 4600,
+      "preco_excelente": 4300
     }
   ]
 }

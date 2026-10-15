@@ -188,6 +188,10 @@ def _pegar(dados, *indices):
     return dados
 
 
+class SemVoos(RuntimeError):
+    """O Google respondeu normalmente, mas sem nenhum voo: tentar de novo não adianta."""
+
+
 def _eh_trecho(t):
     return (isinstance(t, list) and len(t) > 6
             and isinstance(t[3], str) and len(t[3]) == 3
@@ -339,7 +343,7 @@ def _extrair(html):
         resultados = parse_tolerante(html)
     com_preco = [r for r in resultados if getattr(r, "price", 0)]
     if not com_preco:
-        raise RuntimeError(f"nenhum voo com preço encontrado ({len(resultados)} resultado(s) sem preço)")
+        raise SemVoos("o Google não mostra voos para estas datas")
     return com_preco
 
 
@@ -362,6 +366,8 @@ def buscar_mais_barato(query):
 
     ultimo_erro, html = None, None
     for i, (nome, params) in enumerate(tentativas):
+        if i == 2 and isinstance(ultimo_erro, SemVoos):
+            break  # as duas consultas responderam sem voos: não é falha passageira
         if i and PAUSA_SEGUNDOS:
             time.sleep(PAUSA_SEGUNDOS * (4 if i == 2 else 1))
         try:
@@ -484,29 +490,133 @@ def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=
             linhas.append(f"  {_fmt_data(c['ida'])}{volta}: {P(v.price)}  {l}")
     texto = "\n".join(linhas)
 
-    # html
-    from html import escape as e
-    botao = ('display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;'
-             'padding:12px 20px;border-radius:6px;font-weight:bold')
-    linhas_det = "".join(
-        f'<tr><td style="padding:4px 12px 4px 0;color:#5f6368">{e(k)}</td>'
-        f'<td style="padding:4px 0"><b>{e(v)}</b></td></tr>' for k, v in detalhes)
-    tabela_op = ""
-    if len(opcoes) > 1:
-        lin = "".join(
-            f'<tr><td style="padding:6px 12px 6px 0">{_fmt_data(c["ida"])}'
-            f'{" → " + _fmt_data(c["volta"]) if c.get("volta") else ""}</td>'
-            f'<td style="padding:6px 12px 6px 0"><b>{e(P(v.price))}</b></td>'
-            f'<td><a href="{e(l)}">ver voos</a></td></tr>' for c, v, l in opcoes)
-        tabela_op = ('<h3 style="margin:24px 0 8px">Datas mais baratas</h3>'
-                     f'<table style="border-collapse:collapse">{lin}</table>')
-    cabecalho = f'<h2 style="margin:0 0 8px">{e(rota["nome"])}</h2>' if rota.get("nome") else ""
-    html = (f'<div style="font-family:Arial,sans-serif;font-size:15px;color:#202124">'
-            f'{cabecalho}<p style="font-size:17px">{e(chamada)}</p>'
-            f'<p><a href="{e(link)}" style="{botao}">Abrir no Google Flights</a></p>'
-            f'<table style="border-collapse:collapse">{linhas_det}</table>'
-            f'{tabela_op}</div>')
+    html = _cartao_html(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats,
+                        opcoes, modo_resumo)
     return assunto, texto, html
+
+
+# --------------------------------------------------------------------------
+# HTML do e-mail (tabelas + estilos inline: é o que Gmail/Outlook respeitam)
+# --------------------------------------------------------------------------
+
+_DIAS = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
+_MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+_FONTE = "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif"
+
+
+def _data_curta(iso):
+    d = date.fromisoformat(iso)
+    return f"{_DIAS[d.weekday()]}, {d.day} {_MESES[d.month - 1]}"
+
+
+def _horario(resumo):
+    """'07:55 → 06:10 (+1)' a partir de partida/chegada 'dd/mm/aaaa hh:mm'."""
+    try:
+        dp, hp = resumo["partida"].split()
+        dc, hc = resumo["chegada"].split()
+    except ValueError:
+        return ""
+    mais = ""
+    if dp != dc:
+        dias = (date(*map(int, reversed(dc.split("/")))) - date(*map(int, reversed(dp.split("/"))))).days
+        mais = f" (+{dias})" if dias > 0 else ""
+    return f"{hp} → {hc}{mais}"
+
+
+def _cartao_html(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats, opcoes,
+                 modo_resumo):
+    from html import escape as e
+
+    P = lambda v: e(fmt_preco(v, moeda))  # noqa: E731
+    alvo, excelente = rota["preco_alvo"], rota.get("preco_excelente")
+    if excelente and preco <= excelente:
+        selo, fundo, cor = "🔥 Preço excelente", "#fce8e6", "#c5221f"
+    elif preco < alvo:
+        selo, fundo, cor = "✓ Abaixo do alvo", "#e6f4ea", "#137333"
+    else:
+        selo, fundo, cor = f"Acima do alvo · faltam {fmt_preco(preco - alvo + 1, moeda)}", "#fef7e0", "#b06000"
+
+    volta = combo.get("volta")
+    tipo = "ida e volta" if volta else "só ida"
+    adultos = rota.get("adultos", 1)
+    pessoas = f"{adultos} adulto{'s' if adultos > 1 else ''}"
+    escalas = ("voo direto" if resumo["escalas"] == 0 else
+               f"{resumo['escalas']} escala{'s' if resumo['escalas'] > 1 else ''} "
+               f"({', '.join(resumo['conexoes'])})")
+    horario = _horario(resumo)
+
+    rotulo = 'font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5f6368'
+    col_volta = (
+        f'<td width="50%" style="padding:14px 16px;vertical-align:top">'
+        f'<div style="{rotulo}">Volta</div>'
+        f'<div style="font-size:16px;font-weight:600;margin-top:4px">{e(_data_curta(volta))}</div>'
+        f'<div style="font-size:13px;color:#5f6368;margin-top:2px">'
+        f'{e(combo["destino"])} → {e(combo["origem"])}</div></td>'
+    ) if volta else ""
+    trechos = (
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+        f'style="background:#f8f9fa;border-radius:12px;margin-top:20px"><tr>'
+        f'<td width="50%" style="padding:14px 16px;vertical-align:top;'
+        f'{"border-right:1px solid #e8eaed" if volta else ""}">'
+        f'<div style="{rotulo}">Ida</div>'
+        f'<div style="font-size:16px;font-weight:600;margin-top:4px">{e(_data_curta(combo["ida"]))}</div>'
+        f'<div style="font-size:13px;color:#5f6368;margin-top:2px">{e(horario) or "&nbsp;"}</div></td>'
+        f'{col_volta}</tr>'
+        f'<tr><td colspan="2" style="padding:12px 16px;border-top:1px solid #e8eaed;'
+        f'font-size:13px;color:#3c4043">✈ {e(resumo["companhia"])} &nbsp;·&nbsp; {e(escalas)}</td></tr>'
+        f'</table>'
+    )
+
+    botao = (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:20px">'
+             f'<tr><td style="background:#1a73e8;border-radius:24px">'
+             f'<a href="{e(link)}" style="display:inline-block;padding:13px 26px;color:#ffffff;'
+             f'text-decoration:none;font-weight:600;font-size:15px">Ver voos no Google Flights →</a>'
+             f'</td></tr></table>')
+
+    lista = ""
+    if len(opcoes) > 1:
+        linhas = []
+        for n, (c, v, l) in enumerate(opcoes):
+            destaque = "background:#e8f0fe;" if n == 0 else ""
+            datas = _data_curta(c["ida"]) + (f" → {_data_curta(c['volta'])}" if c.get("volta") else "")
+            linhas.append(
+                f'<tr><td style="{destaque}padding:10px 12px;border-radius:8px 0 0 8px;font-size:14px">'
+                f'{e(datas)}</td>'
+                f'<td align="right" style="{destaque}padding:10px 8px;font-size:14px;font-weight:600;'
+                f'white-space:nowrap">{P(v.price)}</td>'
+                f'<td align="right" style="{destaque}padding:10px 12px;border-radius:0 8px 8px 0;'
+                f'white-space:nowrap"><a href="{e(l)}" style="color:#1a73e8;text-decoration:none;'
+                f'font-size:13px;font-weight:600">ver ›</a></td></tr>')
+        lista = (f'<div style="{rotulo};margin-top:28px;margin-bottom:6px">Datas mais baratas</div>'
+                 f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">'
+                 f'{"".join(linhas)}</table>')
+
+    rodape = [f"Alvo: abaixo de {P(alvo)}" + (f" · excelente até {P(excelente)}" if excelente else "")]
+    if ultimo_avisado is not None and not modo_resumo:
+        rodape.append(f"Último aviso: {P(ultimo_avisado)} — o preço caiu de novo")
+    if stats and stats["n"] > 1:
+        rodape.append(f"Últimos {DIAS_CONSULTAS} dias: mínimo {P(stats['min'])} · "
+                      f"mediana {P(stats['mediana'])} ({stats['n']} consultas)")
+
+    nome = (f'<div style="{rotulo}">{e(rota["nome"])}</div>') if rota.get("nome") else ""
+    return (
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+        f'style="background:#ffffff;border-radius:16px;box-shadow:0 1px 3px rgba(60,64,67,.15)">'
+        f'<tr><td style="padding:28px 28px 24px;{_FONTE};color:#202124">'
+        f'{nome}'
+        f'<div style="font-size:22px;font-weight:700;margin-top:6px">'
+        f'{e(combo["origem"])} <span style="color:#1a73e8">✈</span> {e(combo["destino"])}</div>'
+        f'<div style="font-size:40px;font-weight:800;letter-spacing:-.02em;margin-top:18px;'
+        f'line-height:1">{P(preco)}</div>'
+        f'<div style="font-size:13px;color:#5f6368;margin-top:6px">{tipo} · {pessoas} · menor preço encontrado</div>'
+        f'<div style="margin-top:14px"><span style="display:inline-block;background:{fundo};'
+        f'color:{cor};font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px">'
+        f'{e(selo)}</span></div>'
+        f'{trechos}{botao}{lista}'
+        f'<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e8eaed;'
+        f'font-size:12px;line-height:1.6;color:#5f6368">{"<br>".join(rodape)}</div>'
+        f'</td></tr></table>'
+    )
 
 
 def enviar_email(assunto, corpo, html=None):
@@ -608,6 +718,10 @@ def buscar_combinacoes(chave, combos, moeda, buscar, montar):
             try:
                 query = montar(combo, moeda)
                 voo = buscar(query)
+            except SemVoos as e:
+                erro = e  # resposta definitiva: não entra na segunda rodada
+                print(f"[{chave}]   {descrever(combo)}: {e}")
+                continue
             except Exception as e:
                 falharam.append(combo)
                 erro = e
@@ -683,8 +797,21 @@ def juntar_secoes(secoes):
     if len(secoes) > 1:
         assunto += f" (+{len(secoes) - 1} rota{'s' if len(secoes) > 2 else ''})"
     texto = ("\n\n" + "-" * 40 + "\n\n").join(s["texto"] for s in secoes)
-    html = '<hr style="margin:28px 0;border:none;border-top:1px solid #dadce0">'.join(
-        s["html"] for s in secoes)
+    cartoes = '<div style="height:20px;line-height:20px">&nbsp;</div>'.join(s["html"] for s in secoes)
+    agora = datetime.now(timezone(timedelta(hours=-3))).strftime("%d/%m/%Y às %H:%M")
+    html = (
+        f'<div style="margin:0;padding:0;background:#f1f3f4">'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+        f'style="background:#f1f3f4"><tr><td align="center" style="padding:28px 12px">'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+        f'style="max-width:600px"><tr><td style="padding:0 4px 16px;{_FONTE};font-size:14px;'
+        f'color:#5f6368"><b style="color:#202124">✈️ Alerta de passagens</b> · busca de {agora}</td></tr>'
+        f'<tr><td>{cartoes}</td></tr>'
+        f'<tr><td style="padding:20px 4px 0;{_FONTE};font-size:11px;line-height:1.6;color:#80868b">'
+        f'Preços do Google Flights no momento da busca; podem mudar. Datas e alvos ficam em '
+        f'rotas.json no repositório.</td></tr>'
+        f'</table></td></tr></table></div>'
+    )
     return assunto, texto, html
 
 
