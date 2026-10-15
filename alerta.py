@@ -72,32 +72,44 @@ def chave_rota(rota):
     ida = _juntar(rota.get("ida")) or f"{rota['ida_de']}_a_{rota['ida_ate']}"
     if rota.get("estadia_dias"):
         volta = f"{_juntar(rota['estadia_dias'])}d"
+    elif rota.get("volta_de"):
+        volta = f"{rota['volta_de']}_a_{rota['volta_ate']}"
     else:
         volta = _juntar(rota.get("volta")) or "so-ida"
     return (f"{_juntar(rota['origem'])}-{_juntar(rota['destino'])}-"
             f"{ida}-{volta}-{rota.get('adultos', 1)}ad")
 
 
+def _intervalo(de, ate):
+    dia, fim = date.fromisoformat(de), date.fromisoformat(ate)
+    datas = []
+    while dia <= fim:
+        datas.append(dia.isoformat())
+        dia += timedelta(days=1)
+    return datas
+
+
 def _datas_ida(rota):
     """Datas de ida: "ida" (valor ou lista) ou o intervalo "ida_de".."ida_ate"."""
     if rota.get("ida_de"):
-        dia, fim = date.fromisoformat(rota["ida_de"]), date.fromisoformat(rota["ida_ate"])
-        datas = []
-        while dia <= fim:
-            datas.append(dia.isoformat())
-            dia += timedelta(days=1)
-        return datas
+        return _intervalo(rota["ida_de"], rota["ida_ate"])
     return _lista(rota["ida"])
 
 
 def _pares_ida_volta(rota):
-    """Pares (ida, volta). Com "estadia_dias", a volta é ida + estadia."""
+    """Pares (ida, volta).
+
+    Com "estadia_dias", a volta é ida + estadia; com "volta_de".."volta_ate",
+    todas as combinações de ida e volta do intervalo; senão, "volta".
+    """
     idas = _datas_ida(rota)
     if rota.get("estadia_dias"):
         return [
             (ida, (date.fromisoformat(ida) + timedelta(days=int(n))).isoformat())
             for ida in idas for n in _lista(rota["estadia_dias"])
         ]
+    if rota.get("volta_de"):
+        return list(itertools.product(idas, _intervalo(rota["volta_de"], rota["volta_ate"])))
     return list(itertools.product(idas, _lista(rota.get("volta"))))
 
 
