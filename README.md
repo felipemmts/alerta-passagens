@@ -22,7 +22,7 @@ Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-
    - `EMAIL_SENHA`: senha de app
    - `EMAIL_DESTINO`: quem recebe
 3. Em *Settings → Actions → General → Workflow permissions*, deixe marcado **Read and write permissions**.
-4. Para rodar manualmente: aba *Actions → Alerta de passagens → Run workflow*.
+4. Para rodar manualmente: aba *Actions → Alerta de passagens → Run workflow*. Marque **"Só enviar um e-mail de teste"** para conferir os Secrets sem buscar preços.
 
 ## Rodar localmente
 

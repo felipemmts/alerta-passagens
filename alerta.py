@@ -634,5 +634,19 @@ def main(buscar=None, enviar=None, montar=None, hoje=None):
     return 0
 
 
+def teste_email():
+    """Envia um e-mail de teste para conferir os Secrets."""
+    try:
+        enviar_email("✈️ Alerta de passagens: e-mail de teste",
+                     "Se você recebeu esta mensagem, o envio de alertas está funcionando.")
+    except Exception as e:
+        print(f"Falha no e-mail de teste: {type(e).__name__}: {e}", file=sys.stderr)
+        return 1
+    print("E-mail de teste enviado.")
+    return 0
+
+
 if __name__ == "__main__":
+    if os.environ.get("TESTE_EMAIL", "").lower() == "true":
+        sys.exit(teste_email())
     sys.exit(main())
