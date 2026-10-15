@@ -1,2 +1,2 @@
-  e-mail: remetente @gmail.com, senha com 15 caracteres, destino @gmail.com
-Falha no e-mail de teste: RuntimeError: EMAIL_SENHA tem 15 caracteres, mas a senha de app do Gmail tem 16 letras: gere uma nova em https://myaccount.google.com/apppasswords e atualize o Secret
+  e-mail: remetente @gmail.com, senha com 16 caracteres, destino @gmail.com
+E-mail de teste enviado.
