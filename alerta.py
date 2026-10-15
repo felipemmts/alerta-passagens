@@ -198,14 +198,6 @@ def _procurar_itens(dados, profundidade=0):
         yield from _procurar_itens(x, profundidade + 1)
 
 
-def _forma(payload):
-    """Resumo da estrutura de topo (para diagnóstico no log)."""
-    partes = []
-    for i, x in enumerate(payload[:12] if isinstance(payload, list) else []):
-        partes.append(f"{i}:{'None' if x is None else type(x).__name__ + (f'[{len(x)}]' if isinstance(x, list) else '')}")
-    return " ".join(partes)
-
-
 def parse_tolerante(html):
     """Parser alternativo ao da fast-flights 3.1.0.
 
@@ -235,8 +227,6 @@ def parse_tolerante(html):
     if not blocos:
         # Estrutura diferente da esperada: procura itens de voo em toda a página.
         blocos = [list(_procurar_itens(payload))]
-        print(f"  estrutura da página: {_forma(payload)}; "
-              f"{len(blocos[0])} item(ns) de voo achados por busca ampla")
 
     resultados = []
     for bloco in blocos:
@@ -324,8 +314,7 @@ def _extrair(html):
     try:
         resultados = list(parse(html))
     except Exception as e:
-        print(f"  parser da fast-flights falhou ({type(e).__name__}: {e}); usando parser tolerante")
-        resultados = []
+        resultados = []  # parser da biblioteca falhou: tenta o tolerante
     if not resultados:
         resultados = parse_tolerante(html)
     com_preco = [r for r in resultados if getattr(r, "price", 0)]
@@ -335,18 +324,9 @@ def _extrair(html):
 
 
 def _diagnosticar(html, nome):
-    """Salva a página em debug/ e mostra um trecho no log."""
-    from selectolax.lexbor import LexborHTMLParser
-
+    """Salva a página da última tentativa em debug/ (vira artefato do workflow)."""
     PASTA_DEBUG.mkdir(exist_ok=True)
     (PASTA_DEBUG / f"{nome}.html").write_text(html, encoding="utf-8")
-    arvore = LexborHTMLParser(html)
-    titulo = arvore.css_first("title")
-    script = arvore.css_first(r"script.ds\:1")
-    trecho = script.text()[:300] if script else html[:300]
-    print(f"  diagnóstico: título={titulo.text() if titulo else None!r}, {len(html)} bytes, "
-          f"salvo em debug/{nome}.html")
-    print(f"  trecho: {trecho!r}")
 
 
 def buscar_mais_barato(query):
@@ -360,22 +340,19 @@ def buscar_mais_barato(query):
         # tentativa depois de uma pausa maior.
         tentativas.append(("formato Google, 2ª tentativa", google))
 
-    ultimo_erro = None
+    ultimo_erro, html = None, None
     for i, (nome, params) in enumerate(tentativas):
         if i and PAUSA_SEGUNDOS:
             time.sleep(PAUSA_SEGUNDOS * (4 if i == 2 else 1))
-        html = _baixar(params)
         try:
+            html = _baixar(params)
             resultados = _extrair(html)
-        except RuntimeError as e:
-            print(f"  [{nome}] {e}")
-            if combo:
-                _diagnosticar(html, f"{descrever(combo)}-{nome}".replace(" ", "_").replace("→", "-"))
+        except Exception as e:
             ultimo_erro = e
             continue
-        if i:
-            print(f"  [{nome}] funcionou")
         return min(resultados, key=lambda r: r.price)
+    if combo and html:
+        _diagnosticar(html, descrever(combo).replace(" ", "_").replace("→", "-"))
     raise ultimo_erro
 
 
@@ -525,24 +502,33 @@ def buscar_combinacoes(chave, combos, moeda, buscar, montar):
     Falhas individuais são registradas e ignoradas; só lança exceção se
     todas as combinações falharem.
     """
-    melhor, erros = None, []
-    for i, combo in enumerate(combos):
-        if i and PAUSA_SEGUNDOS:
-            time.sleep(PAUSA_SEGUNDOS)  # evita bombardear o Google
-        try:
-            query = montar(combo, moeda)
-            voo = buscar(query)
-        except Exception as e:
-            erros.append(e)
-            print(f"[{chave}]   {descrever(combo)}: ERRO {type(e).__name__}: {e}", file=sys.stderr)
-            continue
-        print(f"[{chave}]   {descrever(combo)}: {int(voo.price)} {moeda}")
-        if melhor is None or voo.price < melhor[2].price:
-            melhor = (combo, query, voo)
+    melhor, pendentes, erro = None, list(combos), None
+    # O Google falha de forma passageira em algumas datas: as que falharem na
+    # primeira rodada são tentadas de novo numa segunda, depois de uma pausa.
+    for rodada in (1, 2):
+        falharam = []
+        if rodada == 2 and pendentes and PAUSA_SEGUNDOS:
+            time.sleep(PAUSA_SEGUNDOS * 5)
+        for i, combo in enumerate(pendentes):
+            if i and PAUSA_SEGUNDOS:
+                time.sleep(PAUSA_SEGUNDOS)  # evita bombardear o Google
+            try:
+                query = montar(combo, moeda)
+                voo = buscar(query)
+            except Exception as e:
+                falharam.append(combo)
+                erro = e
+                continue
+            print(f"[{chave}]   {descrever(combo)}: {int(voo.price)} {moeda}")
+            if melhor is None or voo.price < melhor[2].price:
+                melhor = (combo, query, voo)
+        pendentes = falharam
+        if not pendentes:
+            break
+    for combo in pendentes:
+        print(f"[{chave}]   {descrever(combo)}: sem resposta do Google ({erro})")
     if melhor is None:
-        raise erros[-1]
-    if erros:
-        print(f"[{chave}]   {len(erros)} de {len(combos)} busca(s) falharam")
+        raise erro
     return melhor
 
 
@@ -623,8 +609,9 @@ def main(buscar=None, enviar=None, montar=None, hoje=None):
             processar_rota(rota, moeda, historico, buscar, enviar, montar, consultas, hoje)
         except Exception as e:  # uma rota com erro não derruba as outras
             falhas += 1
-            print(f"[{chave_rota(rota)}] ERRO: {type(e).__name__}: {e}", file=sys.stderr)
-            traceback.print_exc()
+            print(f"[{chave_rota(rota)}] ERRO: {e}", file=sys.stderr)
+            if not isinstance(e, RuntimeError):  # erro inesperado: mostra detalhes
+                traceback.print_exc()
 
     salvar()
 
