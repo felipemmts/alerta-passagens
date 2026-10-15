@@ -5,6 +5,10 @@ on:
     - cron: "0 */6 * * *"  # a cada 6 horas (UTC)
   workflow_dispatch:
     inputs:
+      resumo:
+        description: "Buscar e mandar e-mail com os preços atuais, mesmo acima do alvo"
+        type: boolean
+        default: false
       teste_email:
         description: "Só enviar um e-mail de teste (sem buscar preços)"
         type: boolean
@@ -38,6 +42,7 @@ jobs:
           EMAIL_SENHA: ${{ secrets.EMAIL_SENHA }}
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
           TESTE_EMAIL: ${{ inputs.teste_email }}
+          RESUMO: ${{ inputs.resumo }}
         shell: bash  # usa pipefail: o passo falha se o script falhar
         run: python -u alerta.py 2>&1 | tee ultima_execucao.log
 

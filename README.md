@@ -14,6 +14,9 @@ Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-
 - O workflow faz commit de `historico.json` e `consultas.json` de volta no repositório.
 - Rotas com data de ida já passada são ignoradas. Um erro numa rota não afeta as outras. Se todas falharem, o job termina com erro.
 
+- Cada busca tem até 3 tentativas, um limite de 40 s, e as datas que falharem são tentadas de novo numa segunda rodada. Se ainda assim falharem, ficam de fora e a execução segue. O envio de e-mail também tem 3 tentativas.
+- O e-mail traz um botão que abre a busca direto no Google Flights e as 5 datas mais baratas, cada uma com seu link.
+
 ## Configuração
 
 1. Ative a verificação em duas etapas no Gmail e crie uma **senha de app** (https://myaccount.google.com/apppasswords).
@@ -22,7 +25,7 @@ Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-
    - `EMAIL_SENHA`: senha de app
    - `EMAIL_DESTINO`: quem recebe
 3. Em *Settings → Actions → General → Workflow permissions*, deixe marcado **Read and write permissions**.
-4. Para rodar manualmente: aba *Actions → Alerta de passagens → Run workflow*. Marque **"Só enviar um e-mail de teste"** para conferir os Secrets sem buscar preços.
+4. Para rodar manualmente: aba *Actions → Alerta de passagens → Run workflow*. Marque **"Só enviar um e-mail de teste"** para conferir os Secrets sem buscar preços, ou **"Buscar e mandar e-mail com os preços atuais"** para receber um resumo mesmo com o preço acima do alvo.
 
 ## Rodar localmente
 

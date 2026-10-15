@@ -34,6 +34,8 @@ SMTP_PORTA = 465
 
 DIAS_CONSULTAS = 90  # quanto tempo de consultas guardar em consultas.json
 PAUSA_SEGUNDOS = float(os.environ.get("PAUSA_SEGUNDOS", "3"))  # entre buscas no Google
+TIMEOUT_SEGUNDOS = 40  # por requisição ao Google: se travar, desiste e segue
+TENTATIVAS_EMAIL = 3
 
 
 # --------------------------------------------------------------------------
@@ -298,12 +300,18 @@ def tfs_formato_google(combo):
     return base64.urlsafe_b64encode(msg).decode().rstrip("=")
 
 
+def link_busca(combo, moeda):
+    """Link do Google Flights que abre direto nesta busca."""
+    return (f"https://www.google.com/travel/flights/search?tfs={tfs_formato_google(combo)}"
+            f"&hl=pt-BR&curr={moeda}")
+
+
 def _baixar(params):
     from fast_flights.fetcher import URL
     from primp import Client
 
     cliente = Client(impersonate="chrome_145", impersonate_os="macos", referer=True,
-                     cookie_store=True)
+                     cookie_store=True, timeout=TIMEOUT_SEGUNDOS)
     return cliente.get(URL, params=params).text
 
 
@@ -397,46 +405,90 @@ def estatisticas(consultas):
     return {"n": len(precos), "min": min(precos), "mediana": int(statistics.median(precos))}
 
 
-def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=None):
+def _fmt_data(iso):
+    a, m, d = iso.split("-")
+    return f"{d}/{m}/{a}"
+
+
+def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=None,
+                 opcoes=None, modo_resumo=False):
+    """Devolve (assunto, texto, html). opcoes = [(combo, voo, link), ...] mais baratas."""
     trajeto = f"{combo['origem']} → {combo['destino']}"
     excelente = rota.get("preco_excelente")
-    selo = "🔥 PREÇO EXCELENTE" if excelente and preco <= excelente else "✈️"
     titulo = f"{rota['nome']}: " if rota.get("nome") else ""
+    if modo_resumo:
+        selo = "📊 Resumo"
+    else:
+        selo = "🔥 PREÇO EXCELENTE" if excelente and preco <= excelente else "✈️"
     assunto = f"{selo} {titulo}{trajeto} {preco} {moeda} (alvo {rota['preco_alvo']} {moeda})"
 
-    datas = f"Ida {combo['ida']}" + (f" · Volta {combo['volta']}" if combo.get("volta") else " (só ida)")
+    datas = f"Ida {_fmt_data(combo['ida'])}" + (
+        f" · Volta {_fmt_data(combo['volta'])}" if combo.get("volta") else " (só ida)")
     escalas = "direto" if resumo["escalas"] == 0 else (
         f"{resumo['escalas']} ({', '.join(resumo['conexoes'])})"
     )
     faixa = f"{rota['preco_alvo']} {moeda}"
     if excelente:
         faixa += f" (excelente: até {excelente} {moeda})"
-    linhas = [
-        f"Passagem abaixo do preço-alvo: {trajeto}",
-        "",
-        f"Preço:      {preco} {moeda} ({rota.get('adultos', 1)} adulto(s))",
-        f"Preço-alvo: {faixa}",
+    if modo_resumo:
+        chamada = (f"Resumo da busca: o melhor preço agora é {preco} {moeda}"
+                   + (" (abaixo do alvo)." if preco < rota["preco_alvo"] else " (ainda não está abaixo do alvo)."))
+    else:
+        chamada = f"Passagem abaixo do preço-alvo: {trajeto}"
+
+    detalhes = [
+        ("Preço", f"{preco} {moeda} ({rota.get('adultos', 1)} adulto(s))"),
+        ("Preço-alvo", faixa),
     ]
-    if ultimo_avisado is not None:
-        linhas.append(f"Último aviso: {ultimo_avisado} {moeda} (o preço caiu de novo)")
+    if ultimo_avisado is not None and not modo_resumo:
+        detalhes.append(("Último aviso", f"{ultimo_avisado} {moeda} (o preço caiu de novo)"))
     if stats:
-        linhas.append(
-            f"Histórico:  mínimo {stats['min']} / mediana {stats['mediana']} {moeda} "
-            f"em {stats['n']} consulta(s) dos últimos {DIAS_CONSULTAS} dias"
-        )
-    linhas += [
-        f"Datas:      {datas}",
-        f"Companhia:  {resumo['companhia']}",
-        f"Partida (ida): {resumo['partida']}",
-        f"Chegada (ida): {resumo['chegada']}",
-        f"Escalas:    {escalas}",
-        "",
-        f"Google Flights: {link}",
+        detalhes.append(("Histórico", f"mínimo {stats['min']} / mediana {stats['mediana']} {moeda} "
+                                       f"em {stats['n']} consulta(s) dos últimos {DIAS_CONSULTAS} dias"))
+    detalhes += [
+        ("Datas", datas),
+        ("Companhia", resumo["companhia"]),
+        ("Partida (ida)", resumo["partida"]),
+        ("Chegada (ida)", resumo["chegada"]),
+        ("Escalas", escalas),
     ]
-    return assunto, "\n".join(linhas)
+    opcoes = opcoes or []
+
+    # texto puro
+    linhas = [chamada, "", f"Abrir esta busca no Google Flights: {link}", ""]
+    linhas += [f"{k + ':':<15}{v}" for k, v in detalhes]
+    if len(opcoes) > 1:
+        linhas += ["", "Outras datas mais baratas:"]
+        for c, v, l in opcoes:
+            volta = f" → {_fmt_data(c['volta'])}" if c.get("volta") else ""
+            linhas.append(f"  {_fmt_data(c['ida'])}{volta}: {int(v.price)} {moeda}  {l}")
+    texto = "\n".join(linhas)
+
+    # html
+    from html import escape as e
+    botao = ('display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;'
+             'padding:12px 20px;border-radius:6px;font-weight:bold')
+    linhas_det = "".join(
+        f'<tr><td style="padding:4px 12px 4px 0;color:#5f6368">{e(k)}</td>'
+        f'<td style="padding:4px 0"><b>{e(v)}</b></td></tr>' for k, v in detalhes)
+    tabela_op = ""
+    if len(opcoes) > 1:
+        lin = "".join(
+            f'<tr><td style="padding:6px 12px 6px 0">{_fmt_data(c["ida"])}'
+            f'{" → " + _fmt_data(c["volta"]) if c.get("volta") else ""}</td>'
+            f'<td style="padding:6px 12px 6px 0"><b>{int(v.price)} {e(moeda)}</b></td>'
+            f'<td><a href="{e(l)}">ver voos</a></td></tr>' for c, v, l in opcoes)
+        tabela_op = ('<h3 style="margin:24px 0 8px">Datas mais baratas</h3>'
+                     f'<table style="border-collapse:collapse">{lin}</table>')
+    html = (f'<div style="font-family:Arial,sans-serif;font-size:15px;color:#202124">'
+            f'<p style="font-size:17px">{e(chamada)}</p>'
+            f'<p><a href="{e(link)}" style="{botao}">Abrir no Google Flights</a></p>'
+            f'<table style="border-collapse:collapse">{linhas_det}</table>'
+            f'{tabela_op}</div>')
+    return assunto, texto, html
 
 
-def enviar_email(assunto, corpo):
+def enviar_email(assunto, corpo, html=None):
     remetente = os.environ["EMAIL_REMETENTE"].strip()
     # A senha de app do Gmail aparece com espaços ("abcd efgh ijkl mnop") e o
     # Secret pode ter sido colado com quebra de linha: remove tudo isso.
@@ -459,7 +511,25 @@ def enviar_email(assunto, corpo):
     msg["From"] = remetente
     msg["To"] = destino
     msg.set_content(corpo)
+    if html:
+        msg.add_alternative(html, subtype="html")
 
+    # Falhas de conexão costumam ser passageiras: tenta de novo antes de desistir.
+    for tentativa in range(1, TENTATIVAS_EMAIL + 1):
+        try:
+            _enviar_smtp(remetente, senha, msg)
+            return
+        except RuntimeError:
+            raise  # login recusado: tentar de novo não resolve
+        except (smtplib.SMTPException, OSError) as e:
+            if tentativa == TENTATIVAS_EMAIL:
+                raise
+            print(f"  envio do e-mail falhou ({type(e).__name__}); nova tentativa em 15 s",
+                  file=sys.stderr)
+            time.sleep(15)
+
+
+def _enviar_smtp(remetente, senha, msg):
     contexto = ssl.create_default_context()
     try:
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORTA, context=contexto, timeout=30) as smtp:
@@ -497,12 +567,12 @@ def descrever(combo):
 
 
 def buscar_combinacoes(chave, combos, moeda, buscar, montar):
-    """Busca cada combinação e devolve (combo, query, voo) da mais barata.
+    """Busca cada combinação e devolve (combo, query, voo, todos) da mais barata.
 
     Falhas individuais são registradas e ignoradas; só lança exceção se
     todas as combinações falharem.
     """
-    melhor, pendentes, erro = None, list(combos), None
+    melhor, pendentes, erro, todos = None, list(combos), None, []
     # O Google falha de forma passageira em algumas datas: as que falharem na
     # primeira rodada são tentadas de novo numa segunda, depois de uma pausa.
     for rodada in (1, 2):
@@ -520,6 +590,7 @@ def buscar_combinacoes(chave, combos, moeda, buscar, montar):
                 erro = e
                 continue
             print(f"[{chave}]   {descrever(combo)}: {int(voo.price)} {moeda}")
+            todos.append((combo, voo))
             if melhor is None or voo.price < melhor[2].price:
                 melhor = (combo, query, voo)
         pendentes = falharam
@@ -529,11 +600,12 @@ def buscar_combinacoes(chave, combos, moeda, buscar, montar):
         print(f"[{chave}]   {descrever(combo)}: sem resposta do Google ({erro})")
     if melhor is None:
         raise erro
-    return melhor
+    todos.sort(key=lambda cv: cv[1].price)
+    return (*melhor, todos)
 
 
 def processar_rota(rota, moeda, historico, buscar=None, enviar=None, montar=None,
-                   consultas=None, hoje=None):
+                   consultas=None, hoje=None, modo_resumo=False):
     """Processa uma rota. Retorna True se avisou. Lança exceção em falha."""
     buscar = buscar or buscar_mais_barato
     enviar = enviar or enviar_email
@@ -541,7 +613,7 @@ def processar_rota(rota, moeda, historico, buscar=None, enviar=None, montar=None
     consultas = consultas if consultas is not None else {}
 
     chave = chave_rota(rota)
-    combo, query, voo = buscar_combinacoes(chave, expandir(rota, hoje), moeda, buscar, montar)
+    combo, query, voo, todos = buscar_combinacoes(chave, expandir(rota, hoje), moeda, buscar, montar)
     preco = int(voo.price)
 
     registros = consultas.setdefault(chave, [])
@@ -559,10 +631,14 @@ def processar_rota(rota, moeda, historico, buscar=None, enviar=None, montar=None
     print(f"[{chave}] menor preço: {preco} {moeda} em {descrever(combo)} "
           f"(alvo {rota['preco_alvo']}, último aviso {anterior})")
 
+    if modo_resumo:
+        avisar, novo = True, anterior  # manda o e-mail, mas não mexe no histórico de avisos
     if avisar:
-        assunto, corpo = montar_email(rota, combo, moeda, preco, resumir_voo(voo), query.url(),
-                                      anterior, estatisticas(registros))
-        enviar(assunto, corpo)
+        opcoes = [(c, v, link_busca(c, moeda)) for c, v in todos[:5]]
+        assunto, texto, html = montar_email(
+            rota, combo, moeda, preco, resumir_voo(voo), link_busca(combo, moeda),
+            anterior, estatisticas(registros), opcoes, modo_resumo)
+        enviar(assunto, texto, html)
         print(f"[{chave}] e-mail enviado.")
 
     if novo is None:
@@ -576,7 +652,7 @@ def processar_rota(rota, moeda, historico, buscar=None, enviar=None, montar=None
     return avisar
 
 
-def main(buscar=None, enviar=None, montar=None, hoje=None):
+def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
     config = carregar_json(ARQ_ROTAS, {})
     moeda = config.get("moeda", "EUR")
     rotas = config.get("rotas", [])
@@ -606,7 +682,8 @@ def main(buscar=None, enviar=None, montar=None, hoje=None):
     falhas = 0
     for rota in ativas:
         try:
-            processar_rota(rota, moeda, historico, buscar, enviar, montar, consultas, hoje)
+            processar_rota(rota, moeda, historico, buscar, enviar, montar, consultas, hoje,
+                           modo_resumo)
         except Exception as e:  # uma rota com erro não derruba as outras
             falhas += 1
             print(f"[{chave_rota(rota)}] ERRO: {e}", file=sys.stderr)
@@ -636,4 +713,4 @@ def teste_email():
 if __name__ == "__main__":
     if os.environ.get("TESTE_EMAIL", "").lower() == "true":
         sys.exit(teste_email())
-    sys.exit(main())
+    sys.exit(main(modo_resumo=os.environ.get("RESUMO", "").lower() == "true"))
