@@ -136,18 +136,19 @@ def rota_expirada(rota, hoje=None):
     return not expandir(rota, hoje)
 
 
-def decidir_aviso(preco, preco_alvo, ultimo_avisado):
+def decidir_aviso(preco, preco_alvo, ultimo_avisado, queda_minima=0):
     """Retorna (avisar, novo_ultimo_avisado).
 
     - Preço >= alvo: não avisa e limpa o histórico, para que uma nova queda
       abaixo do alvo gere aviso de novo.
     - Preço < alvo e nunca avisado: avisa.
-    - Preço < alvo e menor que o último avisado: avisa (caiu de novo).
+    - Preço < alvo e pelo menos `queda_minima` abaixo do último avisado: avisa
+      (caiu de novo). Quedas menores não avisam e não mudam a referência.
     - Caso contrário: não avisa e mantém o histórico.
     """
     if preco >= preco_alvo:
         return False, None
-    if ultimo_avisado is None or preco < ultimo_avisado:
+    if ultimo_avisado is None or preco <= ultimo_avisado - max(queda_minima, 1):
         return True, preco
     return False, ultimo_avisado
 
@@ -769,7 +770,7 @@ def processar_rota(rota, moeda, historico, buscar=None, montar=None,
 
     aviso = historico.get(chave, {})
     anterior = aviso.get("ultimo_preco_avisado") if aviso.get("moeda", moeda) == moeda else None
-    avisar, novo = decidir_aviso(preco, rota["preco_alvo"], anterior)
+    avisar, novo = decidir_aviso(preco, rota["preco_alvo"], anterior, rota.get("queda_minima", 0))
     print(f"[{chave}] menor preço: {fmt_preco(preco, moeda)} em {descrever(combo)} "
           f"(alvo {fmt_preco(rota['preco_alvo'], moeda)}, último aviso "
           f"{fmt_preco(anterior, moeda) if anterior else 'nenhum'})")
@@ -845,6 +846,7 @@ def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
 
     falhas, secoes = 0, []
     for rota in ativas:
+        rota = {"queda_minima": config.get("queda_minima", 0), **rota}
         try:
             secao = processar_rota(rota, moeda, historico, buscar, montar, consultas, hoje,
                                    modo_resumo)

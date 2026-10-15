@@ -1,5 +1,6 @@
 {
   "moeda": "BRL",
+  "queda_minima": 50,
   "rotas": [
     {
       "nome": "Datas que você quer: ida 15–20/01, volta 15–20/02",
