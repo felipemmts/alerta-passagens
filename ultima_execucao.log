@@ -1,18 +1,18 @@
   parser da fast-flights falhou (TypeError: 'NoneType' object is not subscriptable); usando parser tolerante
   estrutura da página: 0:list[5] 1:list[2] 2:None 3:None 4:None 5:None 6:None 7:list[8] 8:None 9:None 10:None 11:None; 0 item(ns) de voo achados por busca ampla
   [fast-flights] nenhum voo com preço encontrado (0 resultado(s) sem preço)
-  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1840713 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-fast-flights.html
-  trecho: 'AF_initDataCallback({key: \'ds:1\', hash: \'9\', data:[[null,[[1792025193487740,133573508,1310026463],null,null,null,null,[[1]]],0,"aSLQarziHYTX2O8P39XV8AQ","HCWCfe0hUrRQABnpbwBG---------oyrq27AAAAAGrQImkHixhaA"],[[[[["SVQ",0],"Aeroporto de Sevilha",["/m/09f3c","Sevilha",[["https://encrypted-tbn0.gstati'
+  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1851418 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-fast-flights.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\', hash: \'5\', data:[[null,[[1792026293087292,113141618,2533575138],null,null,null,null,[[1]]],0,"tSbQavypBfLO-eUP4pONuAk","HnugdO5yio0QABtRvABG-------oygc6-n1AAAAAGrQJrUBbvZiA"],[[[[["SVQ",0],"Aeroporto de Sevilha",["/m/09f3c","Sevilha",[["https://encrypted-tbn0.gstati'
   parser da fast-flights falhou (TypeError: 'NoneType' object is not subscriptable); usando parser tolerante
   estrutura da página: 0:list[5] 1:list[2] 2:None 3:None 4:None 5:None 6:None 7:list[8] 8:None 9:None 10:None 11:None; 0 item(ns) de voo achados por busca ampla
   [formato Google] nenhum voo com preço encontrado (0 resultado(s) sem preço)
-  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1852873 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-formato_Google.html
-  trecho: 'AF_initDataCallback({key: \'ds:1\', hash: \'9\', data:[[null,[[1792025196784023,113140278,574081403],null,null,null,null,[[1]]],0,"bCLQapftL7bE-eUP-5LfkQI","HB6E2lboMegQABgI8QBG----------oyds4AAAAAGrQImwLyrAuA"],[[[[["SVQ",0],"Aeroporto de Sevilha",["/m/09f3c","Sevilha",[["https://encrypted-tbn0.gstatic'
+  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1852422 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-formato_Google.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\', hash: \'5\', data:[[null,[[1792026296550667,133573508,1310026463],null,null,null,null,[[1]]],0,"uCbQaovOIYTX2O8P39XV8AQ","HbSnTYZw-EKgABm1jABG---------oysy18AAAAAGrQJrgIalTKA"],[[[[["SVQ",0],"Aeroporto de Sevilha",["/m/09f3c","Sevilha",[["https://encrypted-tbn0.gstati'
   parser da fast-flights falhou (TypeError: 'NoneType' object is not subscriptable); usando parser tolerante
   estrutura da página: 0:list[5] 1:list[2] 2:None 3:None 4:None 5:None 6:None 7:list[8] 8:None 9:None 10:None 11:None; 0 item(ns) de voo achados por busca ampla
   [formato Google, 2ª tentativa] nenhum voo com preço encontrado (0 resultado(s) sem preço)
-  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1852513 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-formato_Google,_2ª_tentativa.html
-  trecho: 'AF_initDataCallback({key: \'ds:1\', hash: \'5\', data:[[null,[[1792025209266319,113138543,1947764637],null,null,null,null,[[1]]],0,"eSLQas-gEO-2-eUPnY_ioAc","HpfuwkTpTBocABHMewBG------oyrn17-n1AAAAAGrQInkEF8KQA"],[[[[["SVQ",0],"Aeroporto de Sevilha",["/m/09f3c","Sevilha",[["https://encrypted-tbn0.gstati'
+  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1852139 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-formato_Google,_2ª_tentativa.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\', hash: \'5\', data:[[null,[[1792026308848999,133573508,1310026463],null,null,null,null,[[1]]],0,"xCbQaufoM4TX2O8P39XV8AQ","HpfuwkTpTBocABOD4wBG------oyrn17-n1AAAAAGrQJsQM13bSA"],[[[[["SVQ",0],"Aeroporto de Sevilha",["/m/09f3c","Sevilha",[["https://encrypted-tbn0.gstati'
 [SVQ-GRU-2026-12-10-2027-01-07-1ad]   SVQ→GRU ida 2026-12-10 volta 2027-01-07: ERRO RuntimeError: nenhum voo com preço encontrado (0 resultado(s) sem preço)
 [SVQ-GRU-2026-12-10-2027-01-07-1ad] ERRO: RuntimeError: nenhum voo com preço encontrado (0 resultado(s) sem preço)
 Traceback (most recent call last):
@@ -37,16 +37,16 @@ RuntimeError: nenhum voo com preço encontrado (0 resultado(s) sem preço)
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-15 volta 2027-02-14: 1013 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-16 volta 2027-02-15: 1083 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-17 volta 2027-02-16: 904 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-18 volta 2027-02-17: 900 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-18 volta 2027-02-17: 904 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-19 volta 2027-02-18: 900 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-20 volta 2027-02-19: 845 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-20 volta 2027-02-19: 901 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-21 volta 2027-02-20: 893 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-22 volta 2027-02-21: 875 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-23 volta 2027-02-22: 845 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-24 volta 2027-02-23: 798 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-25 volta 2027-02-24: 767 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-26 volta 2027-02-25: 792 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-27 volta 2027-02-26: 819 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-27 volta 2027-02-26: 798 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-28 volta 2027-02-27: 801 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-29 volta 2027-02-28: 735 EUR
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-30 volta 2027-03-01: 748 EUR
