@@ -17,6 +17,15 @@
       "origem": "GRU",
       "preco": 4793,
       "volta": "2027-02-19"
+    },
+    {
+      "destino": "MAD",
+      "em": "2026-10-15T15:30:58+00:00",
+      "ida": "2027-01-20",
+      "moeda": "BRL",
+      "origem": "GRU",
+      "preco": 4793,
+      "volta": "2027-02-19"
     }
   ],
   "Soluções baratas: ida 15–25/01, volta 30 dias depois": [
@@ -32,6 +41,15 @@
     {
       "destino": "MAD",
       "em": "2026-10-15T14:23:28+00:00",
+      "ida": "2027-01-25",
+      "moeda": "BRL",
+      "origem": "GRU",
+      "preco": 4534,
+      "volta": "2027-02-24"
+    },
+    {
+      "destino": "MAD",
+      "em": "2026-10-15T15:31:39+00:00",
       "ida": "2027-01-25",
       "moeda": "BRL",
       "origem": "GRU",
