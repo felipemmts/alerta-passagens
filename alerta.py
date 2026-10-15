@@ -471,6 +471,12 @@ def enviar_email(assunto, corpo):
           f"{'' if senha.isascii() and senha.isalpha() else ' (não são só letras: senha de app tem só letras)'}, "
           f"destino @{destino.rpartition('@')[2] or '(sem @!)'}")
 
+    if len(senha) != 16:
+        raise RuntimeError(
+            f"EMAIL_SENHA tem {len(senha)} caracteres, mas a senha de app do Gmail tem 16 letras: "
+            "gere uma nova em https://myaccount.google.com/apppasswords e atualize o Secret"
+        )
+
     msg = EmailMessage()
     msg["Subject"] = assunto
     msg["From"] = remetente

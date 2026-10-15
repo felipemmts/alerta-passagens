@@ -32,7 +32,8 @@ jobs:
           EMAIL_REMETENTE: ${{ secrets.EMAIL_REMETENTE }}
           EMAIL_SENHA: ${{ secrets.EMAIL_SENHA }}
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
-        run: python alerta.py
+        shell: bash  # usa pipefail: o passo falha se o script falhar
+        run: python -u alerta.py 2>&1 | tee ultima_execucao.log
 
       - name: Guardar páginas de diagnóstico
         if: always() && hashFiles('debug/*.html') != ''
@@ -45,13 +46,13 @@ jobs:
       - name: Salvar histórico e consultas
         if: always()
         run: |
-          if git diff --quiet -- historico.json consultas.json; then
+          if git diff --quiet -- historico.json consultas.json ultima_execucao.log && git ls-files --error-unmatch ultima_execucao.log >/dev/null 2>&1; then
             echo "Histórico sem alterações."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add historico.json consultas.json
+          git add historico.json consultas.json ultima_execucao.log
           git commit -m "Atualiza histórico e consultas de preços [skip ci]"
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
