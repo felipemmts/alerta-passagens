@@ -1,18 +1,17 @@
-  parser da fast-flights falhou (TypeError: 'NoneType' object is not subscriptable); usando parser tolerante
-  estrutura da página: 0:list[5] 1:list[2] 2:None 3:None 4:None 5:None 6:None 7:list[8] 8:None 9:None 10:None 11:None; 0 item(ns) de voo achados por busca ampla
-  [fast-flights] nenhum voo com preço encontrado (0 resultado(s) sem preço)
-  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1851873 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-fast-flights.html
-  trecho: 'AF_initDataCallback({key: \'ds:1\', hash: \'9\', data:[[null,[[1792032992385969,55305282,1797631581],null,null,null,null,[[1]]],0,"4EDQarHHF8LIr8oP3dyW2QY","HqpvDrMHNpGQACzz-ABG----------oyfk3AAAAAGrQQOAGyGGsA"],[[[[["SVQ",0],"Aeroporto de Sevilha",["/m/09f3c","Sevilha",[["https://encrypted-tbn0.gstatic'
+  parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
+  [fast-flights] Google não encontrou voos para esta busca
+  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1811870 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-fast-flights.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061195665747,54777147,539841330],null,null,null,null,[[0]]],0,"C6_QapPRKLuqj8oPsqa1gQI","HqpvDrMHNpGQAFS5CgBG----------oyfk3AAAAAGrQrwsKEyLKA"],0]]]],errorHasStatus: true,});'
   parser da fast-flights falhou (TypeError: 'NoneType' object is not subscriptable); usando parser tolerante
   estrutura da página: 0:list[5] 1:list[2] 2:None 3:None 4:None 5:None 6:None 7:list[8] 8:None 9:None 10:None 11:None; 0 item(ns) de voo achados por busca ampla
   [formato Google] nenhum voo com preço encontrado (0 resultado(s) sem preço)
-  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1852239 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-formato_Google.html
-  trecho: 'AF_initDataCallback({key: \'ds:1\', hash: \'9\', data:[[null,[[1792032996106626,99194036,304772858],null,null,null,null,[[1]]],0,"5EDQaoLBBrSppt8P-u2pkQE","HQADRg-AUiiwABiJ3wBG----------tbm39AAAAAGrQQOQBth8uA"],[[[[["SVQ",0],"Aeroporto de Sevilha",["/m/09f3c","Sevilha",[["https://encrypted-tbn0.gstatic.'
+  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1846671 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-formato_Google.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\', hash: \'9\', data:[[null,[[1792061199036203,54782440,3138624202],null,null,null,null,[[1]]],0,"D6_QauuaAujTj8oPyrXO2As","HRqXXXtCrHisAArZfgBG------okuh19-n2AAAAAGrQrw8AtnvSA"],[[[[["SVQ",0],"Aeroporto de Sevilha",["/m/09f3c","Sevilha",[["https://encrypted-tbn0.gstatic'
   parser da fast-flights falhou (TypeError: 'NoneType' object is not subscriptable); usando parser tolerante
   estrutura da página: 0:list[5] 1:list[2] 2:None 3:None 4:None 5:None 6:None 7:list[8] 8:None 9:None 10:None 11:None; 0 item(ns) de voo achados por busca ampla
   [formato Google, 2ª tentativa] nenhum voo com preço encontrado (0 resultado(s) sem preço)
-  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1852573 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-formato_Google,_2ª_tentativa.html
-  trecho: 'AF_initDataCallback({key: \'ds:1\', hash: \'9\', data:[[null,[[1792033008592877,55305282,1797631581],null,null,null,null,[[1]]],0,"8EDQau2XJMLIr8oP3dyW2QY","HpfuwkTpTBocAB5YIgBG------oyrn17-n1AAAAAGrQQPAJCH8GA"],[[[[["SVQ",0],"Aeroporto de Sevilha",["/m/09f3c","Sevilha",[["https://encrypted-tbn0.gstatic'
+  diagnóstico: título='de Sevilha a São Paulo | Google Voos', 1857930 bytes, salvo em debug/SVQ-GRU_ida_2026-12-10_volta_2027-01-07-formato_Google,_2ª_tentativa.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\', hash: \'9\', data:[[null,[[1792061211408347,54777147,539841330],null,null,null,null,[[1]]],0,"G6_Qapv2GLuqj8oPsqa1gQI","HnirQaXE7IsIAErP3wBG------oktz21-n2AAAAAGrQrxsGPOyAA"],[[[[["SVQ",0],"Aeroporto de Sevilha",["/m/09f3c","Sevilha",[["https://encrypted-tbn0.gstatic.'
 [SVQ-GRU-2026-12-10-2027-01-07-1ad]   SVQ→GRU ida 2026-12-10 volta 2027-01-07: ERRO RuntimeError: nenhum voo com preço encontrado (0 resultado(s) sem preço)
 [SVQ-GRU-2026-12-10-2027-01-07-1ad] ERRO: RuntimeError: nenhum voo com preço encontrado (0 resultado(s) sem preço)
 Traceback (most recent call last):
@@ -34,34 +33,81 @@ Traceback (most recent call last):
   File "/home/runner/work/alerta-passagens/alerta-passagens/alerta.py", line 333, in _extrair
     raise RuntimeError(f"nenhum voo com preço encontrado ({len(resultados)} resultado(s) sem preço)")
 RuntimeError: nenhum voo com preço encontrado (0 resultado(s) sem preço)
+  parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
+  [fast-flights] Google não encontrou voos para esta busca
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1800926 bytes, salvo em debug/GRU-MAD_ida_2027-01-15_volta_2027-02-14-fast-flights.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061211784125,54782440,3138624202],null,null,null,null,[[0]]],0,"G6_Qav3tL-jTj8oPyrXO2As","Hj9eiK1zVBUkAEOR0ABG-------okxe1-n2AAAAAGrQrxsL4HCKA"],0]]]],errorHasStatus: true,});'
+  [formato Google] funcionou
 [São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-15 volta 2027-02-14: 1010 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-16 volta 2027-02-15: 1079 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-17 volta 2027-02-16: 901 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-18 volta 2027-02-17: 901 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-19 volta 2027-02-18: 901 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-20 volta 2027-02-19: 842 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-21 volta 2027-02-20: 890 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-22 volta 2027-02-21: 872 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-23 volta 2027-02-22: 842 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-24 volta 2027-02-23: 795 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-25 volta 2027-02-24: 765 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-26 volta 2027-02-25: 789 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-16 volta 2027-02-15: 1154 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-17 volta 2027-02-16: 900 EUR
   parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
   [fast-flights] Google não encontrou voos para esta busca
-  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1806683 bytes, salvo em debug/GRU-MAD_ida_2027-01-27_volta_2027-02-26-fast-flights.html
-  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792033050734421,55306337,302686840],null,null,null,null,[[0]]],0,"GkHQatXpLOHQr8oP-MSqkAE","HEX5P9LGcwhgADH2TgBG----------oygp6AAAAAGrQQRoLJ33cA"],0]]]],errorHasStatus: true,});'
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1801246 bytes, salvo em debug/GRU-MAD_ida_2027-01-18_volta_2027-02-17-fast-flights.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061225648976,54777147,539841330],null,null,null,null,[[0]]],0,"Ka_QapDOJ7uqj8oPsqa1gQI","HmTSdJLnS108AFK_ZgBG---------oklf12AAAAAGrQrykJ6KHuA"],0]]]],errorHasStatus: true,});'
   [formato Google] funcionou
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-27 volta 2027-02-26: 795 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-18 volta 2027-02-17: 900 EUR
   parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
   [fast-flights] Google não encontrou voos para esta busca
-  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1807021 bytes, salvo em debug/GRU-MAD_ida_2027-01-28_volta_2027-02-27-fast-flights.html
-  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792033057502029,54775441,2285370191],null,null,null,null,[[0]]],0,"IUHQao3SHpGdj8oPz_bfwQg","HfqGEiS8dBJAACIIlgBG----------oyvj6AAAAAGrQQSEHoyGsA"],0]]]],errorHasStatus: true,});'
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1812478 bytes, salvo em debug/GRU-MAD_ida_2027-01-19_volta_2027-02-18-fast-flights.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061232562666,54775441,4061263643],null,null,null,null,[[0]]],0,"MK_QauqrIpGdj8oPm-7HkA8","HQNgahIPtmR0AFAdtABG---------okux13AAAAAGrQrzAIjGOKA"],0]]]],errorHasStatus: true,});'
+  parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
+  [formato Google] Google não encontrou voos para esta busca
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1801563 bytes, salvo em debug/GRU-MAD_ida_2027-01-19_volta_2027-02-18-formato_Google.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061235909171,54782440,3138624202],null,null,null,null,[[0]]],0,"M6_QavO-N-jTj8oPyrXO2As","HbSnTYZw-EKgAEjRtQBG---------oysy18AAAAAGrQrzMNuAYgA"],0]]]],errorHasStatus: true,});'
+  parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
+  [formato Google, 2ª tentativa] Google não encontrou voos para esta busca
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1801626 bytes, salvo em debug/GRU-MAD_ida_2027-01-19_volta_2027-02-18-formato_Google,_2ª_tentativa.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061248258618,54777147,539841330],null,null,null,null,[[0]]],0,"QK_QarrkD7uqj8oPsqa1gQI","HKSJwseL8ZSYAEfBcQBG---------oysp27AAAAAGrQr0AEA30cA"],0]]]],errorHasStatus: true,});'
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-19 volta 2027-02-18: ERRO RuntimeError: Google não encontrou voos para esta busca
+  parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
+  [fast-flights] Google não encontrou voos para esta busca
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1812140 bytes, salvo em debug/GRU-MAD_ida_2027-01-20_volta_2027-02-19-fast-flights.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061251597087,54775441,4061263643],null,null,null,null,[[0]]],0,"Q6_Qat-4JJGdj8oPm-7HkA8","HZdUMADhwqzkAEBy7gBG---------oynd10AAAAAGrQr0MJEdiUA"],0]]]],errorHasStatus: true,});'
   [formato Google] funcionou
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-28 volta 2027-02-27: 798 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-29 volta 2027-02-28: 733 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-30 volta 2027-03-01: 745 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-31 volta 2027-03-02: 747 EUR
-[São Paulo ⇄ Madri (jan–fev/2027)] menor preço: 733 EUR em GRU→MAD ida 2027-01-29 volta 2027-02-28 (alvo 750, último aviso None)
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-20 volta 2027-02-19: 900 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-21 volta 2027-02-20: 898 EUR
+  parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
+  [fast-flights] Google não encontrou voos para esta busca
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1801172 bytes, salvo em debug/GRU-MAD_ida_2027-01-22_volta_2027-02-21-fast-flights.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061262185190,54775441,4061263643],null,null,null,null,[[0]]],0,"Tq_QauamC5Gdj8oPm-7HkA8","HpfuwkTpTBocAEAr1wBG------oyrn17-n1AAAAAGrQr04C8LlEA"],0]]]],errorHasStatus: true,});'
+  parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
+  [formato Google] Google não encontrou voos para esta busca
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1801626 bytes, salvo em debug/GRU-MAD_ida_2027-01-22_volta_2027-02-21-formato_Google.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061265541504,54777147,539841330],null,null,null,null,[[0]]],0,"Ua_QasCGIbuqj8oPsqa1gQI","HmTSdJLnS108AFLM5wBG---------oklf12AAAAAGrQr1EIOI2gA"],0]]]],errorHasStatus: true,});'
+  [formato Google, 2ª tentativa] funcionou
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-22 volta 2027-02-21: 829 EUR
+  parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
+  [fast-flights] Google não encontrou voos para esta busca
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1801354 bytes, salvo em debug/GRU-MAD_ida_2027-01-23_volta_2027-02-22-fast-flights.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061281380406,54782440,3138624202],null,null,null,null,[[0]]],0,"Ya_QavabF-jTj8oPyrXO2As","HB6E2lboMegQAElLbwBG----------oyds4AAAAAGrQr2EF2L_4A"],0]]]],errorHasStatus: true,});'
+  [formato Google] funcionou
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-23 volta 2027-02-22: 829 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-24 volta 2027-02-23: 802 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-25 volta 2027-02-24: 748 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-26 volta 2027-02-25: 748 EUR
+  parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
+  [fast-flights] Google não encontrou voos para esta busca
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1801307 bytes, salvo em debug/GRU-MAD_ida_2027-01-27_volta_2027-02-26-fast-flights.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061299048756,54777147,539841330],null,null,null,null,[[0]]],0,"c6_QavT8Aruqj8oPsqa1gQI","HEX5P9LGcwhgAGI_mgBG----------oygp6AAAAAGrQr3MA39-GA"],0]]]],errorHasStatus: true,});'
+  [formato Google] funcionou
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-27 volta 2027-02-26: 823 EUR
+  parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
+  [fast-flights] Google não encontrou voos para esta busca
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1812447 bytes, salvo em debug/GRU-MAD_ida_2027-01-28_volta_2027-02-27-fast-flights.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061305870014,54777147,539841330],null,null,null,null,[[0]]],0,"ea_Qav6MNbuqj8oPsqa1gQI","HDyQVF0xeUSUAEJQlABG---------okaq14AAAAAGrQr3kNHW7uA"],0]]]],errorHasStatus: true,});'
+  [formato Google] funcionou
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-28 volta 2027-02-27: 805 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-29 volta 2027-02-28: 739 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-30 volta 2027-03-01: 752 EUR
+  parser da fast-flights falhou (FlightsNotFound: no flights found; received error); usando parser tolerante
+  [fast-flights] Google não encontrou voos para esta busca
+  diagnóstico: título='de São Paulo a Madrid | Google Voos', 1812106 bytes, salvo em debug/GRU-MAD_ida_2027-01-31_volta_2027-03-02-fast-flights.html
+  trecho: 'AF_initDataCallback({key: \'ds:1\',  data:[13,null,[["type.googleapis.com/travel.frontend.flights.ErrorResponse",[[null,[[1792061319757858,54777147,539841330],null,null,null,null,[[0]]],0,"h6_QauKgLruqj8oPsqa1gQI","HwbPAdx2zVgEAEH3oQBG--------oycln11AAAAAGrQr4cLcgrSA"],0]]]],errorHasStatus: true,});'
+  [formato Google] funcionou
+[São Paulo ⇄ Madri (jan–fev/2027)]   GRU→MAD ida 2027-01-31 volta 2027-03-02: 793 EUR
+[São Paulo ⇄ Madri (jan–fev/2027)]   1 de 17 busca(s) falharam
+[São Paulo ⇄ Madri (jan–fev/2027)] menor preço: 739 EUR em GRU→MAD ida 2027-01-29 volta 2027-02-28 (alvo 750, último aviso None)
   e-mail: remetente @gmail.com, senha com 15 caracteres, destino @gmail.com
 [São Paulo ⇄ Madri (jan–fev/2027)] ERRO: RuntimeError: EMAIL_SENHA tem 15 caracteres, mas a senha de app do Gmail tem 16 letras: gere uma nova em https://myaccount.google.com/apppasswords e atualize o Secret
 Traceback (most recent call last):
