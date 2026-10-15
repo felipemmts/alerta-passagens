@@ -417,6 +417,12 @@ def estatisticas(consultas):
     return {"n": len(precos), "min": min(precos), "mediana": int(statistics.median(precos))}
 
 
+def fmt_preco(valor, moeda):
+    """5320, "BRL" -> "R$ 5.320"; 846, "EUR" -> "846 €"."""
+    n = f"{int(valor):,}".replace(",", ".")
+    return {"BRL": f"R$ {n}", "EUR": f"{n} €", "USD": f"US$ {n}"}.get(moeda, f"{n} {moeda}")
+
+
 def _fmt_data(iso):
     a, m, d = iso.split("-")
     return f"{d}/{m}/{a}"
@@ -425,6 +431,7 @@ def _fmt_data(iso):
 def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=None,
                  opcoes=None, modo_resumo=False):
     """Devolve (assunto, texto, html). opcoes = [(combo, voo, link), ...] mais baratas."""
+    P = lambda v: fmt_preco(v, moeda)  # noqa: E731
     trajeto = f"{combo['origem']} → {combo['destino']}"
     excelente = rota.get("preco_excelente")
     titulo = f"{rota['nome']}: " if rota.get("nome") else ""
@@ -432,30 +439,30 @@ def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=
         selo = "📊 Resumo"
     else:
         selo = "🔥 PREÇO EXCELENTE" if excelente and preco <= excelente else "✈️"
-    assunto = f"{selo} {titulo}{trajeto} {preco} {moeda} (alvo {rota['preco_alvo']} {moeda})"
+    assunto = f"{selo} {titulo}{trajeto} {P(preco)} (alvo {P(rota['preco_alvo'])})"
 
     datas = f"Ida {_fmt_data(combo['ida'])}" + (
         f" · Volta {_fmt_data(combo['volta'])}" if combo.get("volta") else " (só ida)")
     escalas = "direto" if resumo["escalas"] == 0 else (
         f"{resumo['escalas']} ({', '.join(resumo['conexoes'])})"
     )
-    faixa = f"{rota['preco_alvo']} {moeda}"
+    faixa = f"abaixo de {P(rota['preco_alvo'])}"
     if excelente:
-        faixa += f" (excelente: até {excelente} {moeda})"
+        faixa += f" (excelente: até {P(excelente)})"
     if modo_resumo:
-        chamada = (f"Resumo da busca: o melhor preço agora é {preco} {moeda}"
+        chamada = (f"Resumo da busca: o melhor preço agora é {P(preco)}"
                    + (" (abaixo do alvo)." if preco < rota["preco_alvo"] else " (ainda não está abaixo do alvo)."))
     else:
-        chamada = f"Passagem abaixo do preço-alvo: {trajeto}"
+        chamada = f"Passagem abaixo do preço-alvo: {trajeto} por {P(preco)}"
 
     detalhes = [
-        ("Preço", f"{preco} {moeda} ({rota.get('adultos', 1)} adulto(s))"),
+        ("Preço", f"{P(preco)} ({rota.get('adultos', 1)} adulto(s), ida e volta)" if combo.get("volta") else f"{P(preco)} ({rota.get('adultos', 1)} adulto(s))"),
         ("Preço-alvo", faixa),
     ]
     if ultimo_avisado is not None and not modo_resumo:
-        detalhes.append(("Último aviso", f"{ultimo_avisado} {moeda} (o preço caiu de novo)"))
+        detalhes.append(("Último aviso", f"{P(ultimo_avisado)} (o preço caiu de novo)"))
     if stats:
-        detalhes.append(("Histórico", f"mínimo {stats['min']} / mediana {stats['mediana']} {moeda} "
+        detalhes.append(("Histórico", f"mínimo {P(stats['min'])} / mediana {P(stats['mediana'])} "
                                        f"em {stats['n']} consulta(s) dos últimos {DIAS_CONSULTAS} dias"))
     detalhes += [
         ("Datas", datas),
@@ -467,13 +474,14 @@ def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=
     opcoes = opcoes or []
 
     # texto puro
-    linhas = [chamada, "", f"Abrir esta busca no Google Flights: {link}", ""]
+    linhas = ([f"== {rota['nome']} =="] if rota.get("nome") else []) + [
+        chamada, "", f"Abrir esta busca no Google Flights: {link}", ""]
     linhas += [f"{k + ':':<15}{v}" for k, v in detalhes]
     if len(opcoes) > 1:
         linhas += ["", "Outras datas mais baratas:"]
         for c, v, l in opcoes:
             volta = f" → {_fmt_data(c['volta'])}" if c.get("volta") else ""
-            linhas.append(f"  {_fmt_data(c['ida'])}{volta}: {int(v.price)} {moeda}  {l}")
+            linhas.append(f"  {_fmt_data(c['ida'])}{volta}: {P(v.price)}  {l}")
     texto = "\n".join(linhas)
 
     # html
@@ -488,12 +496,13 @@ def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=
         lin = "".join(
             f'<tr><td style="padding:6px 12px 6px 0">{_fmt_data(c["ida"])}'
             f'{" → " + _fmt_data(c["volta"]) if c.get("volta") else ""}</td>'
-            f'<td style="padding:6px 12px 6px 0"><b>{int(v.price)} {e(moeda)}</b></td>'
+            f'<td style="padding:6px 12px 6px 0"><b>{e(P(v.price))}</b></td>'
             f'<td><a href="{e(l)}">ver voos</a></td></tr>' for c, v, l in opcoes)
         tabela_op = ('<h3 style="margin:24px 0 8px">Datas mais baratas</h3>'
                      f'<table style="border-collapse:collapse">{lin}</table>')
+    cabecalho = f'<h2 style="margin:0 0 8px">{e(rota["nome"])}</h2>' if rota.get("nome") else ""
     html = (f'<div style="font-family:Arial,sans-serif;font-size:15px;color:#202124">'
-            f'<p style="font-size:17px">{e(chamada)}</p>'
+            f'{cabecalho}<p style="font-size:17px">{e(chamada)}</p>'
             f'<p><a href="{e(link)}" style="{botao}">Abrir no Google Flights</a></p>'
             f'<table style="border-collapse:collapse">{linhas_det}</table>'
             f'{tabela_op}</div>')
@@ -505,12 +514,14 @@ def enviar_email(assunto, corpo, html=None):
     # A senha de app do Gmail aparece com espaços ("abcd efgh ijkl mnop") e o
     # Secret pode ter sido colado com quebra de linha: remove tudo isso.
     senha = "".join(os.environ["EMAIL_SENHA"].split())
-    destino = os.environ["EMAIL_DESTINO"].strip()
+    # EMAIL_DESTINO aceita vários endereços separados por vírgula.
+    destinos = [d.strip() for d in os.environ["EMAIL_DESTINO"].replace(";", ",").split(",") if d.strip()]
     # Diagnóstico sem expor as credenciais.
     print(f"  e-mail: remetente @{remetente.rpartition('@')[2] or '(sem @!)'}, "
           f"senha com {len(senha)} caracteres"
           f"{'' if senha.isascii() and senha.isalpha() else ' (não são só letras: senha de app tem só letras)'}, "
-          f"destino @{destino.rpartition('@')[2] or '(sem @!)'}")
+          f"{len(destinos)} destinatário(s): "
+          + ", ".join(f"@{d.rpartition('@')[2] or '(sem @!)'}" for d in destinos))
 
     if len(senha) != 16:
         raise RuntimeError(
@@ -521,7 +532,7 @@ def enviar_email(assunto, corpo, html=None):
     msg = EmailMessage()
     msg["Subject"] = assunto
     msg["From"] = remetente
-    msg["To"] = destino
+    msg["To"] = ", ".join(destinos)
     msg.set_content(corpo)
     if html:
         msg.add_alternative(html, subtype="html")
@@ -601,7 +612,7 @@ def buscar_combinacoes(chave, combos, moeda, buscar, montar):
                 falharam.append(combo)
                 erro = e
                 continue
-            print(f"[{chave}]   {descrever(combo)}: {int(voo.price)} {moeda}")
+            print(f"[{chave}]   {descrever(combo)}: {fmt_preco(voo.price, moeda)}")
             todos.append((combo, voo))
             if melhor is None or voo.price < melhor[2].price:
                 melhor = (combo, query, voo)
@@ -616,11 +627,14 @@ def buscar_combinacoes(chave, combos, moeda, buscar, montar):
     return (*melhor, todos)
 
 
-def processar_rota(rota, moeda, historico, buscar=None, enviar=None, montar=None,
+def processar_rota(rota, moeda, historico, buscar=None, montar=None,
                    consultas=None, hoje=None, modo_resumo=False):
-    """Processa uma rota. Retorna True se avisou. Lança exceção em falha."""
+    """Busca uma rota e devolve a seção do e-mail (ou None se não há o que avisar).
+
+    A seção traz "aviso": o que gravar no histórico depois que o e-mail sair.
+    Lança exceção se nenhuma busca da rota funcionar.
+    """
     buscar = buscar or buscar_mais_barato
-    enviar = enviar or enviar_email
     montar = montar or montar_query
     consultas = consultas if consultas is not None else {}
 
@@ -632,39 +646,50 @@ def processar_rota(rota, moeda, historico, buscar=None, enviar=None, montar=None
     registros.append({
         "em": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "preco": preco,
+        "moeda": moeda,
         "origem": combo["origem"],
         "destino": combo["destino"],
         "ida": combo["ida"],
         "volta": combo.get("volta"),
     })
 
-    anterior = historico.get(chave, {}).get("ultimo_preco_avisado")
+    aviso = historico.get(chave, {})
+    anterior = aviso.get("ultimo_preco_avisado") if aviso.get("moeda", moeda) == moeda else None
     avisar, novo = decidir_aviso(preco, rota["preco_alvo"], anterior)
-    print(f"[{chave}] menor preço: {preco} {moeda} em {descrever(combo)} "
-          f"(alvo {rota['preco_alvo']}, último aviso {anterior})")
-
-    if modo_resumo:
-        avisar, novo = True, anterior  # manda o e-mail, mas não mexe no histórico de avisos
-    if avisar:
-        opcoes = [(c, v, link_busca(c, moeda)) for c, v in todos[:5]]
-        assunto, texto, html = montar_email(
-            rota, combo, moeda, preco, resumir_voo(voo), link_busca(combo, moeda),
-            anterior, estatisticas(registros), opcoes, modo_resumo)
-        enviar(assunto, texto, html)
-        print(f"[{chave}] e-mail enviado.")
+    print(f"[{chave}] menor preço: {fmt_preco(preco, moeda)} em {descrever(combo)} "
+          f"(alvo {fmt_preco(rota['preco_alvo'], moeda)}, último aviso "
+          f"{fmt_preco(anterior, moeda) if anterior else 'nenhum'})")
 
     if novo is None:
-        historico.pop(chave, None)
-    elif avisar:
-        historico[chave] = {
-            "ultimo_preco_avisado": novo,
-            "moeda": moeda,
-            "avisado_em": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        }
-    return avisar
+        historico.pop(chave, None)  # acima do alvo: a próxima queda avisa de novo
+    if not avisar and not modo_resumo:
+        return None
+
+    # consultas antigas, sem o campo "moeda", foram feitas em EUR
+    mesmos = [r for r in registros if r.get("moeda", "EUR") == moeda]
+    opcoes = [(c, v, link_busca(c, moeda)) for c, v in todos[:5]]
+    assunto, texto, html = montar_email(
+        rota, combo, moeda, preco, resumir_voo(voo), link_busca(combo, moeda),
+        anterior, estatisticas(mesmos), opcoes, modo_resumo)
+    return {
+        "chave": chave, "assunto": assunto, "texto": texto, "html": html,
+        "aviso": {"ultimo_preco_avisado": novo, "moeda": moeda} if avisar and not modo_resumo else None,
+    }
+
+
+def juntar_secoes(secoes):
+    """Um e-mail só com as seções de todas as rotas."""
+    assunto = secoes[0]["assunto"]
+    if len(secoes) > 1:
+        assunto += f" (+{len(secoes) - 1} rota{'s' if len(secoes) > 2 else ''})"
+    texto = ("\n\n" + "-" * 40 + "\n\n").join(s["texto"] for s in secoes)
+    html = '<hr style="margin:28px 0;border:none;border-top:1px solid #dadce0">'.join(
+        s["html"] for s in secoes)
+    return assunto, texto, html
 
 
 def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
+    enviar = enviar or enviar_email
     config = carregar_json(ARQ_ROTAS, {})
     moeda = config.get("moeda", "EUR")
     rotas = config.get("rotas", [])
@@ -691,23 +716,39 @@ def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
         salvar()
         return 0
 
-    falhas = 0
+    falhas, secoes = 0, []
     for rota in ativas:
         try:
-            processar_rota(rota, moeda, historico, buscar, enviar, montar, consultas, hoje,
-                           modo_resumo)
+            secao = processar_rota(rota, moeda, historico, buscar, montar, consultas, hoje,
+                                   modo_resumo)
         except Exception as e:  # uma rota com erro não derruba as outras
             falhas += 1
             print(f"[{chave_rota(rota)}] ERRO: {e}", file=sys.stderr)
             if not isinstance(e, RuntimeError):  # erro inesperado: mostra detalhes
                 traceback.print_exc()
+            continue
+        if secao:
+            secoes.append(secao)
+
+    erro_email = False
+    if secoes:
+        try:
+            enviar(*juntar_secoes(secoes))
+            print(f"E-mail enviado ({len(secoes)} rota(s)).")
+            agora = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            for secao in secoes:  # só grava o aviso depois que o e-mail saiu
+                if secao["aviso"]:
+                    historico[secao["chave"]] = {**secao["aviso"], "avisado_em": agora}
+        except Exception as e:
+            erro_email = True
+            print(f"ERRO no e-mail: {e}", file=sys.stderr)
 
     salvar()
 
     if falhas == len(ativas):
         print("Todas as rotas falharam.", file=sys.stderr)
         return 1
-    return 0
+    return 1 if erro_email else 0
 
 
 def teste_email():

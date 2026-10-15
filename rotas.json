@@ -1,8 +1,8 @@
 {
-  "moeda": "EUR",
+  "moeda": "BRL",
   "rotas": [
     {
-      "nome": "São Paulo ⇄ Madri (jan–fev/2027)",
+      "nome": "Datas que você quer: ida 15–20/01, volta 15–20/02",
       "origem": "GRU",
       "destino": "MAD",
       "ida_de": "2027-01-15",
@@ -11,8 +11,20 @@
       "volta_ate": "2027-02-20",
       "adultos": 1,
       "max_escalas": null,
-      "preco_alvo": 750,
-      "preco_excelente": 650
+      "preco_alvo": 1,
+      "preco_excelente": 1
+    },
+    {
+      "nome": "Soluções baratas: ida 15–25/01, volta 30 dias depois",
+      "origem": "GRU",
+      "destino": "MAD",
+      "ida_de": "2027-01-15",
+      "ida_ate": "2027-01-25",
+      "estadia_dias": 30,
+      "adultos": 1,
+      "max_escalas": null,
+      "preco_alvo": 1,
+      "preco_excelente": 1
     }
   ]
 }
