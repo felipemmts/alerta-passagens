@@ -139,6 +139,8 @@ def expandir(rota, hoje=None):
             continue
         if volta and date.fromisoformat(volta) <= date.fromisoformat(ida):
             continue
+        if volta and rota.get("volta_ate_max") and volta > rota["volta_ate_max"]:
+            continue  # volta depois da data-limite
         if (volta and rota.get("estadia_max_dias")
                 and (date.fromisoformat(volta) - date.fromisoformat(ida)).days > rota["estadia_max_dias"]):
             continue  # o Google não mostra voos para estadias longas demais

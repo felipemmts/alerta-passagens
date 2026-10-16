@@ -4,34 +4,24 @@
   "queda_minima": 50,
   "rotas": [
     {
-      "nome": "FLN → Espanha · Depois do Natal: ida 26–31/12, volta 60 dias depois",
+      "nome": "FLN → Espanha · ida a partir de 26/12, 47 a 56 dias, volta até 22/02",
       "origem": "FLN",
       "destino": [
         "MAD",
         "BCN"
       ],
-      "estadia_dias": 60,
-      "adultos": 1,
-      "max_escalas": null,
-      "navegador_direto": true,
       "ida_de": "2026-12-26",
-      "ida_ate": "2026-12-31",
-      "preco_alvo": 6000,
-      "preco_excelente": 5500
-    },
-    {
-      "nome": "FLN → Espanha · Depois do Ano Novo: ida 01–10/01, volta 60 dias depois",
-      "origem": "FLN",
-      "destino": [
-        "MAD",
-        "BCN"
+      "ida_ate": "2027-01-06",
+      "estadia_dias": [
+        47,
+        50,
+        53,
+        56
       ],
-      "estadia_dias": 60,
+      "volta_ate_max": "2027-02-22",
       "adultos": 1,
       "max_escalas": null,
       "navegador_direto": true,
-      "ida_de": "2027-01-01",
-      "ida_ate": "2027-01-10",
       "preco_alvo": 6000,
       "preco_excelente": 5500
     }
