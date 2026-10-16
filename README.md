@@ -21,7 +21,7 @@ Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-
 
 ## Alerta FLN → Espanha
 
-Um segundo workflow (`.github/workflows/alerta_fln.yml`) faz a mesma coisa saindo de Florianópolis para Madri e Barcelona, com arquivos próprios: `rotas_fln.json`, `historico_fln.json`, `consultas_fln.json` e `ultima_execucao_fln.log`. Ele roda meia hora depois do alerta de São Paulo, usa os mesmos Secrets e é independente: um não afeta o outro. `estadia_max_dias` pula combinações com estadia longa demais, para as quais o Google não mostra voos.
+Um segundo workflow (`.github/workflows/alerta_fln.yml`) faz a mesma coisa que o de São Paulo (GRU → Madri e Barcelona), mas saindo de Florianópolis, com arquivos próprios: `rotas_fln.json`, `historico_fln.json`, `consultas_fln.json` e `ultima_execucao_fln.log`. Ele roda meia hora depois do alerta de São Paulo, usa os mesmos Secrets e é independente: um não afeta o outro. `estadia_max_dias` pula combinações com estadia longa demais, para as quais o Google não mostra voos.
 
 ## Configuração
 

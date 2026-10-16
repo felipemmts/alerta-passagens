@@ -1,4 +1,4 @@
-name: Alerta de passagens
+name: Alerta de passagens GRU → Espanha
 
 on:
   schedule:
@@ -24,7 +24,7 @@ concurrency:
 jobs:
   verificar:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
 

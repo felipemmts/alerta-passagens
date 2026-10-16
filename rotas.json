@@ -1,12 +1,15 @@
 {
-  "titulo": "São Paulo → Madri",
+  "titulo": "São Paulo → Espanha",
   "moeda": "BRL",
   "queda_minima": 50,
   "rotas": [
     {
-      "nome": "Datas que você quer: ida 15–20/01, volta 15–20/02",
+      "nome": "GRU → Espanha · Datas que você quer: ida 15–20/01, volta 15–20/02",
       "origem": "GRU",
-      "destino": "MAD",
+      "destino": [
+        "MAD",
+        "BCN"
+      ],
       "ida_de": "2027-01-15",
       "ida_ate": "2027-01-20",
       "volta_de": "2027-02-15",
@@ -18,9 +21,12 @@
       "preco_excelente": 4550
     },
     {
-      "nome": "Soluções baratas: ida 15–25/01, volta 30 dias depois",
+      "nome": "GRU → Espanha · Soluções baratas: ida 15–25/01, volta 30 dias depois",
       "origem": "GRU",
-      "destino": "MAD",
+      "destino": [
+        "MAD",
+        "BCN"
+      ],
       "ida_de": "2027-01-15",
       "ida_ate": "2027-01-25",
       "estadia_dias": 30,
