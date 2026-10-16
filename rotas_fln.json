@@ -4,26 +4,28 @@
   "queda_minima": 50,
   "rotas": [
     {
-      "nome": "FLN → Espanha · ida a partir de 26/12, 47 a 56 dias, volta até 22/02",
+      "nome": "FLN → Espanha · ida de 26/12 a 03/01, 47 a 57 dias, volta até 22/02",
       "origem": "FLN",
       "destino": [
         "MAD",
         "BCN"
       ],
       "ida_de": "2026-12-26",
-      "ida_ate": "2027-01-06",
+      "ida_ate": "2027-01-03",
       "estadia_dias": [
         47,
-        50,
+        49,
+        51,
         53,
-        56
+        55,
+        57
       ],
       "volta_ate_max": "2027-02-22",
       "adultos": 1,
       "max_escalas": null,
       "navegador_direto": true,
-      "preco_alvo": 6000,
-      "preco_excelente": 5500
+      "preco_alvo": 6100,
+      "preco_excelente": 5600
     }
   ]
 }
