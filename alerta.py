@@ -430,6 +430,13 @@ def _buscar_com_navegador(params):
                 voos = _extrair(pagina.content())
             except Exception:
                 voos = []
+            if not voos and not _pw.get("diagnosticou"):  # uma vez por execução: o que o Google mostrou?
+                _pw["diagnosticou"] = True
+                try:
+                    corpo = " ".join(pagina.inner_text("body", timeout=3000).split())[:200]
+                except Exception as e:
+                    corpo = f"(sem texto: {e})"
+                print(f"  diagnóstico: url={pagina.url[:90]!r} título={pagina.title()!r} texto={corpo!r}")
         com_erro = not voos and any("ErrorResponse" in _texto(r) for r in respostas)
         if not voos and respostas and not com_erro:  # respondeu, mas não entendemos: guarda para análise
             PASTA_DEBUG.mkdir(exist_ok=True)
