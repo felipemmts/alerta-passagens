@@ -2,7 +2,11 @@ name: Alerta de passagens
 
 on:
   schedule:
-    - cron: "43 1,5,9,13,17,21 * * *"  # 6x/dia, a cada 4 horas (UTC), fora da hora cheia
+    # Horários em UTC (Brasília = UTC-3). As tarifas novas chegam aos sistemas de
+    # reserva em lotes (por volta de 10h, 13h, 16h e 20h de Nova York) e levam 1 h ou
+    # mais para aparecer: 4 execuções ficam logo depois de cada lote, mais 2 no meio.
+    - cron: "13 2,16,19,22 * * *"  # 23h13, 13h13, 16h13 e 19h13 em Brasília
+    - cron: "43 6,11 * * *"        # 3h43 e 8h43 em Brasília
   workflow_dispatch:
     inputs:
       resumo:
