@@ -8,12 +8,30 @@
       "origem": "FLN",
       "preco": 5404,
       "volta": "2027-02-15"
+    },
+    {
+      "destino": "MAD",
+      "em": "2026-10-16T01:44:16+00:00",
+      "ida": "2027-01-20",
+      "moeda": "BRL",
+      "origem": "FLN",
+      "preco": 5404,
+      "volta": "2027-02-15"
     }
   ],
   "FLN → Espanha · Soluções baratas: ida 15–25/01, volta 30 dias depois": [
     {
       "destino": "MAD",
       "em": "2026-10-16T01:29:28+00:00",
+      "ida": "2027-01-23",
+      "moeda": "BRL",
+      "origem": "FLN",
+      "preco": 5162,
+      "volta": "2027-02-22"
+    },
+    {
+      "destino": "MAD",
+      "em": "2026-10-16T01:47:50+00:00",
       "ida": "2027-01-23",
       "moeda": "BRL",
       "origem": "FLN",
