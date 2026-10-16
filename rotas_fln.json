@@ -4,38 +4,36 @@
   "queda_minima": 50,
   "rotas": [
     {
-      "nome": "FLN → Espanha · Datas que você quer: ida 15–20/01, volta 15–20/02",
+      "nome": "FLN → Espanha · Depois do Natal: ida 26–31/12, volta 60 dias depois",
       "origem": "FLN",
       "destino": [
         "MAD",
         "BCN"
       ],
-      "ida_de": "2027-01-15",
-      "ida_ate": "2027-01-20",
-      "volta_de": "2027-02-15",
-      "volta_ate": "2027-02-20",
-      "estadia_max_dias": 32,
+      "estadia_dias": 60,
       "adultos": 1,
       "max_escalas": null,
+      "navegador_direto": true,
+      "ida_de": "2026-12-26",
+      "ida_ate": "2026-12-31",
       "preco_alvo": 5450,
-      "preco_excelente": 5100,
-      "navegador_direto": true
+      "preco_excelente": 5000
     },
     {
-      "nome": "FLN → Espanha · Soluções baratas: ida 15–25/01, volta 30 dias depois",
+      "nome": "FLN → Espanha · Depois do Ano Novo: ida 01–10/01, volta 60 dias depois",
       "origem": "FLN",
       "destino": [
         "MAD",
         "BCN"
       ],
-      "ida_de": "2027-01-15",
-      "ida_ate": "2027-01-25",
-      "estadia_dias": 30,
+      "estadia_dias": 60,
       "adultos": 1,
       "max_escalas": null,
-      "preco_alvo": 5200,
-      "preco_excelente": 4900,
-      "navegador_direto": true
+      "navegador_direto": true,
+      "ida_de": "2027-01-01",
+      "ida_ate": "2027-01-10",
+      "preco_alvo": 5450,
+      "preco_excelente": 5000
     }
   ]
 }
