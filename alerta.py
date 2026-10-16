@@ -379,7 +379,8 @@ def _buscar_com_navegador(params):
                 depois_da_resposta += 1
                 if depois_da_resposta >= 6:  # respondeu há 3 s e sem voos: desiste
                     break
-        if not voos and respostas:  # respondeu, mas não entendemos: guarda para análise
+        com_erro = not voos and any("ErrorResponse" in _texto(r) for r in respostas)
+        if not voos and respostas and not com_erro:  # respondeu, mas não entendemos: guarda para análise
             PASTA_DEBUG.mkdir(exist_ok=True)
             n = len(list(PASTA_DEBUG.glob("navegador_*.txt")))
             if n < 5:
@@ -390,6 +391,9 @@ def _buscar_com_navegador(params):
     finally:
         pagina.close()
     voos = [v for v in voos if v.price]
+    if com_erro:
+        # erro passageiro do Google (o mesmo "errorHasStatus" das consultas diretas)
+        raise RuntimeError("o Google respondeu com erro (navegador)")
     if not voos:
         raise SemVoos(f"o Google não mostra voos para estas datas (navegador: {len(respostas)} resposta(s))")
     return voos
@@ -523,12 +527,15 @@ def buscar_mais_barato(query):
         # tentativa depois de uma pausa maior.
         tentativas.append(("formato Google, 2ª tentativa", google))
 
-    # Origem que já precisou do navegador nesta execução: vai direto para ele.
-    if combo and USAR_NAVEGADOR and combo["origem"] in _navegador["direto"]:
+    # Rota configurada com "navegador_direto", ou origem que já precisou do
+    # navegador nesta execução: vai direto para ele.
+    if combo and USAR_NAVEGADOR and (combo.get("navegador_direto") or combo["origem"] in _navegador["direto"]):
         try:
             return min(_navegador_com_controle(google), key=lambda r: r.price)
         except Exception:
-            pass  # cai nas tentativas normais
+            if combo.get("navegador_direto") and _navegador_ativo():
+                raise  # as consultas diretas não funcionam nesta rota: nem tenta
+            # senão, cai nas tentativas normais
 
     ultimo_erro, html = None, None
     for i, (nome, params) in enumerate(tentativas):

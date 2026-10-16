@@ -24,7 +24,7 @@ concurrency:
 jobs:
   verificar:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
 
@@ -34,9 +34,7 @@ jobs:
           cache: pip
 
       - name: Instalar dependências
-        run: |
-          pip install -r requirements.txt
-          python -m playwright install --with-deps chromium
+        run: pip install -r requirements.txt
 
       - name: Verificar preços
         env:
@@ -45,7 +43,6 @@ jobs:
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
           TESTE_EMAIL: ${{ inputs.teste_email }}
           RESUMO: ${{ inputs.resumo }}
-          USAR_NAVEGADOR: "true"
         shell: bash  # usa pipefail: o passo falha se o script falhar
         run: python -u alerta.py 2>&1 | tee ultima_execucao.log
 
