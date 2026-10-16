@@ -2,7 +2,7 @@ name: Alerta de passagens FLN → Espanha
 
 on:
   schedule:
-    - cron: "30 11,23 * * *"  # 2x/dia (UTC) = 8h30 e 20h30 em Brasília
+    - cron: "43 11,23 * * *"  # 2x/dia (UTC) = 8h43 e 20h43 em Brasília (fora da hora cheia e da meia hora)
   workflow_dispatch:
     inputs:
       resumo:

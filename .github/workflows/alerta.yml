@@ -2,7 +2,7 @@ name: Alerta de passagens GRU → Espanha
 
 on:
   schedule:
-    - cron: "0 0,8,16 * * *"  # 3x/dia (UTC) = 21h, 5h e 13h em Brasília
+    - cron: "17 0,8,16 * * *"  # 3x/dia (UTC) = 21h17, 5h17 e 13h17 em Brasília (fora da hora cheia, que o GitHub atrasa ou descarta)
   workflow_dispatch:
     inputs:
       resumo:
