@@ -55,6 +55,28 @@
       "volta": "2027-02-17"
     }
   ],
+  "GRU → Espanha · Datas que você quer: ida 15–20/01, volta 15–20/02": [
+    {
+      "destino": "BCN",
+      "em": "2026-10-16T00:20:47+00:00",
+      "ida": "2027-01-20",
+      "moeda": "BRL",
+      "origem": "GRU",
+      "preco": 4588,
+      "volta": "2027-02-17"
+    }
+  ],
+  "GRU → Espanha · Soluções baratas: ida 15–25/01, volta 30 dias depois": [
+    {
+      "destino": "BCN",
+      "em": "2026-10-16T00:22:11+00:00",
+      "ida": "2027-01-24",
+      "moeda": "BRL",
+      "origem": "GRU",
+      "preco": 4452,
+      "volta": "2027-02-23"
+    }
+  ],
   "Soluções baratas: ida 15–25/01, volta 30 dias depois": [
     {
       "destino": "MAD",
