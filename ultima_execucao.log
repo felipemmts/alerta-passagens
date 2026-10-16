@@ -1,16 +1,9 @@
-[Busca principal]   novo ciclo: 76 combinações em lotes de 20
-[Busca principal]   FLN→BCN ida 2026-12-26 volta 2027-02-11: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   FLN→BCN ida 2026-12-26 volta 2027-02-15: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   FLN→BCN ida 2026-12-26 volta 2027-02-19: R$ 7.681
-[Busca principal]   FLN→BCN ida 2026-12-27 volta 2027-02-12: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   FLN→BCN ida 2026-12-27 volta 2027-02-16: R$ 6.512
-[Busca principal]   FLN→BCN ida 2026-12-27 volta 2027-02-20: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   FLN→BCN ida 2026-12-28 volta 2027-02-13: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   FLN→BCN ida 2026-12-28 volta 2027-02-17: R$ 6.139
-[Busca principal]   FLN→BCN ida 2026-12-28 volta 2027-02-21: R$ 6.139
-[Busca principal]   FLN→BCN ida 2026-12-29 volta 2027-02-16: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   FLN→BCN ida 2026-12-29 volta 2027-02-20: sem resposta do Google (o Google respondeu com erro (navegador))
-[Busca principal]   FLN→BCN ida 2026-12-30 volta 2027-02-15: sem resposta do Google (o Google respondeu com erro (navegador))
-[Busca principal]   o Google parou de responder: encerrando; 8 combinação(ões) ficam para a próxima execução
-[Busca principal]   lote: 4 preço(s) de 20; fila: 72 restante(s); preços válidos: 4 de 76
-[Busca principal] menor preço: R$ 6.139 em FLN→BCN ida 2026-12-28 volta 2027-02-17 (alvo R$ 6.100, último aviso R$ 5.676)
+[Busca principal]   FLN→MAD ida 2026-12-26 volta 2027-02-15: sem resposta do Google (o Google respondeu com erro (navegador))
+[Busca principal]   FLN→MAD ida 2026-12-26 volta 2027-02-19: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   FLN→MAD ida 2026-12-27 volta 2027-02-12: R$ 7.267
+[Busca principal]   FLN→MAD ida 2026-12-27 volta 2027-02-16: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   FLN→MAD ida 2026-12-27 volta 2027-02-20: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   FLN→MAD ida 2026-12-28 volta 2027-02-13: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   o Google parou de responder: encerrando; 14 combinação(ões) ficam para a próxima execução
+[Busca principal]   lote: 1 preço(s) de 20; fila: 71 restante(s); preços válidos: 5 de 76
+[Busca principal] menor preço: R$ 6.139 em FLN→BCN ida 2026-12-28 volta 2027-02-17 (alvo R$ 6.100, último aviso nenhum)
