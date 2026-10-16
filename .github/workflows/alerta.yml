@@ -28,7 +28,7 @@ concurrency:
 jobs:
   verificar:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
 
@@ -49,10 +49,11 @@ jobs:
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
           TESTE_EMAIL: ${{ inputs.teste_email }}
           RESUMO: ${{ inputs.resumo }}
-          PRAZO_MINUTOS: "12"  # para de buscar e envia o que tem antes do timeout do job
+          PRAZO_MINUTOS: "20"  # para de buscar e envia o que tem antes do timeout do job
           USAR_NAVEGADOR: "true"
           LOTE: "20"  # combinações por execução; a próxima continua de onde esta parou
-          PAUSA_SEGUNDOS: "5"  # pausa entre buscas: com muitas seguidas, o Google responde com erro
+          PAUSA_SEGUNDOS: "20"      # pausa aleatória entre 20 e 45 s entre buscas:
+          PAUSA_MAX_SEGUNDOS: "45"  # ritmo de pessoa, para o Google não travar
         shell: bash  # usa pipefail: o passo falha se o script falhar
         run: python -u alerta.py 2>&1 | tee ultima_execucao.log
 

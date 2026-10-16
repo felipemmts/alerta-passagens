@@ -13,6 +13,7 @@ import base64
 import itertools
 import json
 import os
+import random
 import re
 import smtplib
 import ssl
@@ -37,6 +38,16 @@ SMTP_PORTA = 465
 
 DIAS_CONSULTAS = 90  # quanto tempo de consultas guardar em consultas.json
 PAUSA_SEGUNDOS = float(os.environ.get("PAUSA_SEGUNDOS", "3"))  # entre buscas no Google
+# Se definido, a pausa é aleatória entre PAUSA_SEGUNDOS e PAUSA_MAX_SEGUNDOS:
+# pausa fixa e curta é padrão de robô e faz o Google travar mais.
+PAUSA_MAX_SEGUNDOS = float(os.environ.get("PAUSA_MAX_SEGUNDOS", "0") or 0)
+
+
+def _pausa():
+    if PAUSA_MAX_SEGUNDOS > PAUSA_SEGUNDOS:
+        time.sleep(random.uniform(PAUSA_SEGUNDOS, PAUSA_MAX_SEGUNDOS))
+    elif PAUSA_SEGUNDOS:
+        time.sleep(PAUSA_SEGUNDOS)
 TIMEOUT_SEGUNDOS = 40  # por requisição ao Google: se travar, desiste e segue
 TENTATIVAS_EMAIL = 3
 # Busca em lotes: cada execução consulta só LOTE combinações e a próxima continua
@@ -356,8 +367,24 @@ def _navegador_aberto():
         from playwright.sync_api import sync_playwright
 
         _pw["playwright"] = sync_playwright().start()
-        _pw["navegador"] = _pw["playwright"].chromium.launch(headless=True)
-        _pw["contexto"] = _pw["navegador"].new_context(locale="pt-BR")
+        _pw["navegador"] = _pw["playwright"].chromium.launch(
+            headless=True, args=["--disable-blink-features=AutomationControlled"])
+        # Parece um Chrome comum no Brasil: o Chromium automatizado se identifica como
+        # "HeadlessChrome" e expõe navigator.webdriver, o que o Google detecta.
+        versao = _pw["navegador"].version.split(".")[0]
+        contexto = _pw["navegador"].new_context(
+            locale="pt-BR", timezone_id="America/Sao_Paulo",
+            viewport={"width": 1366, "height": 768},
+            user_agent=(f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                        f"(KHTML, like Gecko) Chrome/{versao}.0.0.0 Safari/537.36"),
+            extra_http_headers={"Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8"})
+        contexto.add_init_script(
+            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
+            "Object.defineProperty(navigator, 'languages', {get: () => ['pt-BR', 'pt', 'en']});")
+        # consentimento de cookies já aceito (evita a página de "Antes de continuar")
+        contexto.add_cookies([{"name": "SOCS", "value": "CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg",
+                               "domain": ".google.com", "path": "/"}])
+        _pw["contexto"] = contexto
         atexit.register(_fechar_navegador)
     return _pw["contexto"]
 
@@ -1003,8 +1030,8 @@ def buscar_em_lotes(chave, combos, moeda, buscar, montar, limite, progresso):
             motivo = "o Google parou de responder" if seguidas >= FALHAS_PARA_PARAR else "tempo esgotado"
             print(f"[{chave}]   {motivo}: encerrando; {len(lote) - n} combinação(ões) ficam para a próxima execução")
             break
-        if n and PAUSA_SEGUNDOS:
-            time.sleep(PAUSA_SEGUNDOS)
+        if n:
+            _pausa()
         combo = por_id[cid]
         try:
             voo = buscar(montar(combo, moeda))

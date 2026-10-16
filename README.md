@@ -13,6 +13,7 @@ Consulta o Google Flights pelo GitHub Actions (via [fast-flights](https://github
 - O e-mail traz um botão que abre a busca no Google Flights e as 5 combinações mais baratas, cada uma com seu link. Quando há mais de uma busca com novidade, sai um e-mail só.
 - Quando a consulta direta não traz voos (acontece em algumas rotas e em estadias longas), a busca é feita num navegador (Playwright). `navegador_direto: true` pula a consulta direta.
 - Busca em lotes (`LOTE` no workflow): cada execução consulta só parte das combinações, salteadas pelo período todo, e a próxima continua de onde parou (`progresso.json`). O e-mail considera os preços das últimas 36 h de todos os lotes.
+- Entre uma busca e outra há uma pausa aleatória (`PAUSA_SEGUNDOS` a `PAUSA_MAX_SEGUNDOS`), e o navegador se apresenta como um Chrome comum: buscas rápidas e em ritmo fixo fazem o Google travar.
 - Se o Google falhar 3 vezes seguidas, a execução para na hora e o que faltou volta para a fila. Há também um prazo (`PRAZO_MINUTOS`): perto dele, para de buscar e envia o que já tem.
 - `historico.json`: último preço avisado por busca.
 - `progresso.json`: fila de combinações ainda não consultadas no ciclo e últimos preços de cada uma.
