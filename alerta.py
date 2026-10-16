@@ -379,6 +379,12 @@ def _buscar_com_navegador(params):
                 depois_da_resposta += 1
                 if depois_da_resposta >= 6:  # respondeu há 3 s e sem voos: desiste
                     break
+        if not voos and not respostas:
+            # nenhuma chamada à parte: às vezes os voos vêm na própria página
+            try:
+                voos = _extrair(pagina.content())
+            except Exception:
+                voos = []
         com_erro = not voos and any("ErrorResponse" in _texto(r) for r in respostas)
         if not voos and respostas and not com_erro:  # respondeu, mas não entendemos: guarda para análise
             PASTA_DEBUG.mkdir(exist_ok=True)
@@ -394,6 +400,8 @@ def _buscar_com_navegador(params):
     if com_erro:
         # erro passageiro do Google (o mesmo "errorHasStatus" das consultas diretas)
         raise RuntimeError("o Google respondeu com erro (navegador)")
+    if not voos and not respostas:
+        raise RuntimeError("o Google não respondeu a tempo (navegador)")  # tenta de novo na 2ª rodada
     if not voos:
         raise SemVoos(f"o Google não mostra voos para estas datas (navegador: {len(respostas)} resposta(s))")
     return voos

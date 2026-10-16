@@ -1,6 +1,6 @@
 # Alerta de passagens aéreas
 
-Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-flights) 3.1.0, sem chave de API) a cada 6 horas pelo GitHub Actions e manda um e-mail quando o preço fica abaixo do alvo.
+Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-flights) 3.1.0, sem chave de API) pelo GitHub Actions (GRU 3x/dia, FLN 2x/dia, para caber nos 2.000 min/mês do plano grátis em repositório privado) e manda um e-mail quando o preço fica abaixo do alvo.
 
 ## Como funciona
 
@@ -21,7 +21,7 @@ Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-
 
 ## Alerta FLN → Espanha
 
-Um segundo workflow (`.github/workflows/alerta_fln.yml`) faz a mesma coisa que o de São Paulo (GRU → Madri e Barcelona), mas saindo de Florianópolis, com arquivos próprios: `rotas_fln.json`, `historico_fln.json`, `consultas_fln.json` e `ultima_execucao_fln.log`. Ele roda meia hora depois do alerta de São Paulo, usa os mesmos Secrets e é independente: um não afeta o outro. `estadia_max_dias` pula combinações com estadia longa demais, para as quais o Google não mostra voos.
+Um segundo workflow (`.github/workflows/alerta_fln.yml`) faz a mesma coisa que o de São Paulo (GRU → Madri e Barcelona), mas saindo de Florianópolis, com arquivos próprios: `rotas_fln.json`, `historico_fln.json`, `consultas_fln.json` e `ultima_execucao_fln.log`. Para essas rotas o Google só manda os voos depois de carregar a página, então ele abre a busca num navegador (Playwright). Roda 2x/dia, usa os mesmos Secrets e é independente: um não afeta o outro. `estadia_max_dias` pula combinações com estadia longa demais, para as quais o Google não mostra voos.
 
 ## Configuração
 
