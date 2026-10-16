@@ -16,8 +16,8 @@
       "navegador_direto": true,
       "ida_de": "2026-12-26",
       "ida_ate": "2026-12-31",
-      "preco_alvo": 5450,
-      "preco_excelente": 5000
+      "preco_alvo": 6000,
+      "preco_excelente": 5500
     },
     {
       "nome": "FLN → Espanha · Depois do Ano Novo: ida 01–10/01, volta 60 dias depois",
@@ -32,8 +32,8 @@
       "navegador_direto": true,
       "ida_de": "2027-01-01",
       "ida_ate": "2027-01-10",
-      "preco_alvo": 5450,
-      "preco_excelente": 5000
+      "preco_alvo": 6000,
+      "preco_excelente": 5500
     }
   ]
 }

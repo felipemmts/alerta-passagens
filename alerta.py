@@ -911,16 +911,17 @@ def buscar_combinacoes(chave, combos, moeda, buscar, montar, limite=None):
     """
     melhor, pendentes, erro, todos = None, list(combos), None, []
     sem_tempo = []
-    # O Google falha de forma passageira em algumas datas: as que falharem na
-    # primeira rodada são tentadas de novo numa segunda, depois de uma pausa.
-    for rodada in (1, 2):
+    # O Google falha de forma passageira em algumas datas (e mais quando recebe
+    # muitas buscas seguidas): as que falharem são tentadas de novo em mais duas
+    # rodadas, com pausas cada vez maiores.
+    for rodada in (1, 2, 3):
         falharam = []
-        if rodada == 2 and pendentes and PAUSA_SEGUNDOS:
-            time.sleep(PAUSA_SEGUNDOS * 5)
+        if rodada > 1 and pendentes and PAUSA_SEGUNDOS:
+            time.sleep(PAUSA_SEGUNDOS * (5 if rodada == 2 else 15))
         for i, combo in enumerate(pendentes):
             if limite is not None and time.monotonic() >= limite:
                 sem_tempo = pendentes[i:] if rodada == 1 else []
-                if rodada == 2:
+                if rodada > 1:
                     falharam.extend(pendentes[i:])
                 break
             if i and PAUSA_SEGUNDOS:

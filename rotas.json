@@ -15,8 +15,8 @@
       "max_escalas": null,
       "ida_de": "2026-12-26",
       "ida_ate": "2026-12-31",
-      "preco_alvo": 4850,
-      "preco_excelente": 4400
+      "preco_alvo": 4900,
+      "preco_excelente": 4500
     },
     {
       "nome": "GRU → Espanha · Depois do Ano Novo: ida 01–10/01, volta 60 dias depois",
@@ -30,8 +30,8 @@
       "max_escalas": null,
       "ida_de": "2027-01-01",
       "ida_ate": "2027-01-10",
-      "preco_alvo": 4850,
-      "preco_excelente": 4400
+      "preco_alvo": 4900,
+      "preco_excelente": 4500
     }
   ]
 }

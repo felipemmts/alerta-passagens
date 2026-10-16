@@ -47,7 +47,7 @@ jobs:
           RESUMO: ${{ inputs.resumo }}
           PRAZO_MINUTOS: "35"  # para de buscar e envia o que tem antes do timeout do job
           USAR_NAVEGADOR: "true"
-          PAUSA_SEGUNDOS: "1"  # o próprio navegador já espaça as buscas
+          PAUSA_SEGUNDOS: "2"  # menos buscas seguidas: o Google responde com erro quando recebe muitas
           ARQUIVO_ROTAS: rotas_fln.json
           ARQUIVO_HISTORICO: historico_fln.json
           ARQUIVO_CONSULTAS: consultas_fln.json
