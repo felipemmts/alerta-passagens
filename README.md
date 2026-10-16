@@ -20,7 +20,9 @@ Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-
 - Cada Action tem um prazo (`PRAZO_MINUTOS` no workflow) menor que o limite do GitHub: perto dele, para de buscar e envia o e-mail com o que já encontrou, dividindo o tempo entre as rotas. O e-mail diz quantas combinações de datas foram consultadas.
 - O e-mail traz um botão que abre a busca direto no Google Flights e as 5 datas mais baratas, cada uma com seu link.
 
-## Alerta FLN → Espanha
+## Alerta FLN → Espanha (o único ativo)
+
+O alerta de São Paulo (GRU) foi desligado: o workflow `alerta.yml` foi removido, mas `rotas.json`, `historico.json` e `consultas.json` continuam no repositório. Para religar, restaure `.github/workflows/alerta.yml` pelo histórico do git.
 
 Um segundo workflow (`.github/workflows/alerta_fln.yml`) faz a mesma coisa que o de São Paulo (GRU → Madri e Barcelona), mas saindo de Florianópolis, com arquivos próprios: `rotas_fln.json`, `historico_fln.json`, `consultas_fln.json` e `ultima_execucao_fln.log`. Para essas rotas o Google só manda os voos depois de carregar a página, então ele abre a busca num navegador (Playwright). Roda 2x/dia, usa os mesmos Secrets e é independente: um não afeta o outro. `estadia_max_dias` pula combinações com estadia longa demais, para as quais o Google não mostra voos.
 
