@@ -1,46 +1,62 @@
 # Alerta de passagens aéreas
 
-Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-flights) 3.1.0, sem chave de API) pelo GitHub Actions (GRU 3x/dia, FLN 2x/dia, para caber nos 2.000 min/mês do plano grátis em repositório privado) e manda um e-mail quando o preço fica abaixo do alvo.
+Consulta o Google Flights pelo GitHub Actions (via [fast-flights](https://github.com/AWeirdDev/fast-flights) 3.1.0, sem chave de API) e manda um e-mail quando o preço de uma rota fica abaixo do alvo.
 
 ## Como funciona
 
-- `rotas.json`: moeda e lista de rotas (`origem`, `destino`, `ida`, `volta` opcional, `adultos`, `max_escalas` (`null` = qualquer), `preco_alvo`, e opcionalmente `nome` e `preco_excelente`).
-  - `origem`, `destino`, `ida` e `volta` aceitam um valor ou uma lista. Todas as combinações são consultadas (com uma pausa de 3 s entre elas) e vale a mais barata, com um único e-mail por rota.
-  - `volta_ate_max` descarta combinações com volta depois dessa data.
-- Para datas flexíveis, use `ida_de` e `ida_ate` (todas as datas do intervalo) no lugar de `ida`, e `volta_de`/`volta_ate` (todas as combinações de ida e volta) ou `estadia_dias` (número ou lista: a volta é a ida mais a estadia) no lugar de `volta`.
-  - Abaixo de `preco_alvo`, chega o aviso. Até `preco_excelente`, o assunto do e-mail vem marcado com 🔥.
-- `alerta.py`: busca o voo mais barato de cada rota e manda e-mail se o preço estiver abaixo do `preco_alvo`. Depois de um aviso, só avisa de novo se o preço cair pelo menos `queda_minima` (em rotas.json; hoje R$ 50) abaixo do último preço avisado. Se o preço voltar a ficar acima do alvo, o histórico da rota é limpo.
-- Quando mais de uma rota tem novidade, sai um e-mail só, com uma parte para cada rota.
-- `EMAIL_DESTINO` aceita vários endereços separados por vírgula (ex.: `eu@gmail.com, outra@gmail.com`).
-- `historico.json`: último preço avisado por rota.
-- `consultas.json`: menor preço encontrado em cada execução (com a combinação), guardado por 90 dias. O e-mail mostra o mínimo e a mediana desse período.
-- O workflow faz commit de `historico.json` e `consultas.json` de volta no repositório.
-- Rotas com data de ida já passada são ignoradas. Um erro numa rota não afeta as outras. Se todas falharem, o job termina com erro.
+- `rotas.json`: título do e-mail, moeda, `queda_minima` e a lista de buscas. Cada busca tem `origem`, `destino`, datas, `adultos`, `max_escalas` (`null` = qualquer), `preco_alvo` e, opcionalmente, `nome` e `preco_excelente`.
+  - `origem` e `destino` aceitam um código de aeroporto ou uma lista.
+  - Datas de ida: `ida` (uma data ou lista) ou o intervalo `ida_de`/`ida_ate`.
+  - Volta: `volta` (data ou lista), o intervalo `volta_de`/`volta_ate`, ou `estadia_dias` (número ou lista: a volta é a ida mais a estadia). `volta_ate_max` descarta voltas depois dessa data.
+  - Todas as combinações são consultadas e vale a mais barata.
+- Avisa quando o preço fica abaixo de `preco_alvo` (🔥 até `preco_excelente`). Depois de um aviso, só avisa de novo se cair pelo menos `queda_minima` abaixo do último preço avisado. Se o preço voltar a ficar acima do alvo, a próxima queda avisa de novo.
+- O e-mail traz um botão que abre a busca no Google Flights e as 5 combinações mais baratas, cada uma com seu link. Quando há mais de uma busca com novidade, sai um e-mail só.
+- Quando a consulta direta não traz voos (acontece em algumas rotas e em estadias longas), a busca é feita num navegador (Playwright). `navegador_direto: true` pula a consulta direta.
+- Cada busca tem várias tentativas e as combinações que falharem são tentadas de novo em mais duas rodadas. O workflow tem um prazo (`PRAZO_MINUTOS`) menor que o limite do GitHub: perto dele, para de buscar e envia o que já encontrou.
+- `historico.json`: último preço avisado por busca.
+- `consultas.json`: menor preço de cada execução, guardado por 90 dias. O e-mail mostra o mínimo e a mediana do período.
+- `ultima_execucao.log`: log da última execução.
+- O workflow faz commit desses três arquivos de volta no repositório.
 
-- Cada busca tem até 3 tentativas, um limite de 40 s, e as datas que falharem são tentadas de novo numa segunda rodada. Se ainda assim falharem, ficam de fora e a execução segue. O envio de e-mail também tem 3 tentativas.
-- Cada Action tem um prazo (`PRAZO_MINUTOS` no workflow) menor que o limite do GitHub: perto dele, para de buscar e envia o e-mail com o que já encontrou, dividindo o tempo entre as rotas. O e-mail diz quantas combinações de datas foram consultadas.
-- O e-mail traz um botão que abre a busca direto no Google Flights e as 5 datas mais baratas, cada uma com seu link.
+Exemplo de busca: ida de Lisboa para Vancouver em qualquer dia de 10 a 15/03, ficando 20 ou 25 dias:
 
-## Alerta FLN → Espanha (o único ativo)
-
-O alerta de São Paulo (GRU) foi desligado: o workflow `alerta.yml` foi removido, mas `rotas.json`, `historico.json` e `consultas.json` continuam no repositório. Para religar, restaure `.github/workflows/alerta.yml` pelo histórico do git.
-
-Um segundo workflow (`.github/workflows/alerta_fln.yml`) faz a mesma coisa que o de São Paulo (GRU → Madri e Barcelona), mas saindo de Florianópolis, com arquivos próprios: `rotas_fln.json`, `historico_fln.json`, `consultas_fln.json` e `ultima_execucao_fln.log`. Para essas rotas o Google só manda os voos depois de carregar a página, então ele abre a busca num navegador (Playwright). Roda 2x/dia, usa os mesmos Secrets e é independente: um não afeta o outro. `estadia_max_dias` pula combinações com estadia longa demais, para as quais o Google não mostra voos.
+```json
+{
+  "titulo": "Alerta de passagens",
+  "moeda": "EUR",
+  "queda_minima": 30,
+  "rotas": [
+    {
+      "nome": "Exemplo",
+      "origem": "LIS",
+      "destino": "YVR",
+      "ida_de": "2027-03-10",
+      "ida_ate": "2027-03-15",
+      "estadia_dias": [20, 25],
+      "adultos": 1,
+      "max_escalas": 1,
+      "preco_alvo": 900,
+      "preco_excelente": 750
+    }
+  ]
+}
+```
 
 ## Configuração
 
 1. Ative a verificação em duas etapas no Gmail e crie uma **senha de app** (https://myaccount.google.com/apppasswords).
-2. No repositório, vá em *Settings → Secrets and variables → Actions* e crie:
+2. Em *Settings → Secrets and variables → Actions*, crie:
    - `EMAIL_REMETENTE`: Gmail que envia
-   - `EMAIL_SENHA`: senha de app
-   - `EMAIL_DESTINO`: quem recebe
-3. Em *Settings → Actions → General → Workflow permissions*, deixe marcado **Read and write permissions**.
-4. Para rodar manualmente: aba *Actions → Alerta de passagens → Run workflow*. Marque **"Só enviar um e-mail de teste"** para conferir os Secrets sem buscar preços, ou **"Buscar e mandar e-mail com os preços atuais"** para receber um resumo mesmo com o preço acima do alvo.
+   - `EMAIL_SENHA`: senha de app (16 letras)
+   - `EMAIL_DESTINO`: quem recebe (vários endereços separados por vírgula)
+3. Em *Settings → Actions → General → Workflow permissions*, marque **Read and write permissions**.
+4. Para rodar manualmente: *Actions → Alerta de passagens → Run workflow*. Opções: **"Só enviar um e-mail de teste"** (confere os Secrets) e **"Buscar e mandar e-mail com os preços atuais"** (resumo, mesmo acima do alvo).
 
 ## Rodar localmente
 
 ```bash
 pip install -r requirements.txt
+python -m playwright install chromium
 export EMAIL_REMETENTE=... EMAIL_SENHA=... EMAIL_DESTINO=...
-python alerta.py
+USAR_NAVEGADOR=true python alerta.py
 ```

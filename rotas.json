@@ -1,37 +1,31 @@
 {
-  "titulo": "São Paulo → Espanha",
+  "titulo": "Alerta de passagens",
   "moeda": "BRL",
   "queda_minima": 50,
   "rotas": [
     {
-      "nome": "GRU → Espanha · Depois do Natal: ida 26–31/12, volta 60 dias depois",
-      "origem": "GRU",
+      "nome": "Busca principal",
+      "origem": "FLN",
       "destino": [
         "MAD",
         "BCN"
       ],
-      "estadia_dias": 60,
-      "adultos": 1,
-      "max_escalas": null,
       "ida_de": "2026-12-26",
-      "ida_ate": "2026-12-31",
-      "preco_alvo": 4900,
-      "preco_excelente": 4500
-    },
-    {
-      "nome": "GRU → Espanha · Depois do Ano Novo: ida 01–10/01, volta 60 dias depois",
-      "origem": "GRU",
-      "destino": [
-        "MAD",
-        "BCN"
+      "ida_ate": "2027-01-03",
+      "estadia_dias": [
+        47,
+        49,
+        51,
+        53,
+        55,
+        57
       ],
-      "estadia_dias": 60,
+      "volta_ate_max": "2027-02-22",
       "adultos": 1,
       "max_escalas": null,
-      "ida_de": "2027-01-01",
-      "ida_ate": "2027-01-10",
-      "preco_alvo": 4900,
-      "preco_excelente": 4500
+      "navegador_direto": true,
+      "preco_alvo": 6100,
+      "preco_excelente": 5600
     }
   ]
 }

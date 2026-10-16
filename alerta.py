@@ -25,7 +25,7 @@ from email.message import EmailMessage
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent
-# Cada alerta (workflow) pode ter os próprios arquivos: veja alerta_fln.yml.
+# Os arquivos podem ser trocados por variáveis de ambiente (útil para ter mais de um alerta).
 ARQ_ROTAS = BASE / os.environ.get("ARQUIVO_ROTAS", "rotas.json")
 ARQ_HISTORICO = BASE / os.environ.get("ARQUIVO_HISTORICO", "historico.json")
 ARQ_CONSULTAS = BASE / os.environ.get("ARQUIVO_CONSULTAS", "consultas.json")
@@ -295,7 +295,7 @@ def _itens_para_voos(itens):
     return resultados
 
 
-# Para algumas rotas (ex.: saindo de FLN), o Google não manda os voos junto com
+# Para algumas rotas (ex.: saindo de aeroportos menores), o Google não manda os voos junto com
 # a página: o navegador pede os resultados depois, numa chamada à parte
 # (GetShoppingResults). Aqui abrimos a página num Chromium de verdade e lemos
 # essa resposta.
