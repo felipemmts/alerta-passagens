@@ -1,3 +1,5 @@
 fast-flights==3.1.0
 # fast-flights 3.1.0 importa typing_extensions sem declará-lo como dependência
 typing_extensions
+# navegador para rotas em que o Google só manda os voos depois de carregar a página
+playwright==1.56.0

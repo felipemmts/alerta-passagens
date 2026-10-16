@@ -13,6 +13,7 @@ import base64
 import itertools
 import json
 import os
+import re
 import smtplib
 import ssl
 import statistics
@@ -37,6 +38,9 @@ DIAS_CONSULTAS = 90  # quanto tempo de consultas guardar em consultas.json
 PAUSA_SEGUNDOS = float(os.environ.get("PAUSA_SEGUNDOS", "3"))  # entre buscas no Google
 TIMEOUT_SEGUNDOS = 40  # por requisição ao Google: se travar, desiste e segue
 TENTATIVAS_EMAIL = 3
+# Plano C para rotas em que o Google só manda os voos depois de carregar a página.
+USAR_NAVEGADOR = os.environ.get("USAR_NAVEGADOR", "").lower() == "true"
+_navegador = {"direto": set(), "falhas_seguidas": 0, "sucessos": 0}  # estado durante a execução
 
 
 # --------------------------------------------------------------------------
@@ -242,36 +246,145 @@ def parse_tolerante(html):
         raise RuntimeError("Google não encontrou voos para esta busca")
     payload = json.loads(data)
 
-    def hora(v):
-        v = [*(v or []), None, None]
-        return (v[0] or 0, v[1] or 0)
-
     blocos = [b for b in (_pegar(payload, 2, 0), _pegar(payload, 3, 0)) if b]
     if not blocos:
         # Estrutura diferente da esperada: procura itens de voo em toda a página.
         blocos = [list(_procurar_itens(payload))]
+    return _itens_para_voos(item for bloco in blocos for item in bloco or [])
+
+
+def _itens_para_voos(itens):
+    """Converte itens do JSON do Google ([voo, [[_, preço]], ...]) em Flights."""
+    from fast_flights.model import Airport, Flights, SimpleDatetime, SingleFlight
+
+    def hora(v):
+        v = [*(v or []), None, None]
+        return (v[0] or 0, v[1] or 0)
 
     resultados = []
-    for bloco in blocos:
-        for item in bloco or []:
-            voo, preco = _pegar(item, 0), _pegar(item, 1, 0, 1)
-            if not voo or not isinstance(preco, int) or not preco:
-                continue
-            trechos = []
-            for t in _pegar(voo, 2) or []:
-                trechos.append(SingleFlight(
-                    from_airport=Airport(code=_pegar(t, 3), name=_pegar(t, 4)),
-                    to_airport=Airport(code=_pegar(t, 6), name=_pegar(t, 5)),
-                    departure=SimpleDatetime(date=tuple(_pegar(t, 20) or ()), time=hora(_pegar(t, 8))),
-                    arrival=SimpleDatetime(date=tuple(_pegar(t, 21) or ()), time=hora(_pegar(t, 10))),
-                    duration=_pegar(t, 11),
-                    plane_type=_pegar(t, 17),
-                ))
-            resultados.append(Flights(
-                type=_pegar(voo, 0), price=preco, airlines=_pegar(voo, 1) or [],
-                flights=trechos, carbon=None,
+    for item in itens:
+        voo, preco = _pegar(item, 0), _pegar(item, 1, 0, 1)
+        if not voo or not isinstance(preco, int) or not preco:
+            continue
+        trechos = []
+        for t in _pegar(voo, 2) or []:
+            trechos.append(SingleFlight(
+                from_airport=Airport(code=_pegar(t, 3), name=_pegar(t, 4)),
+                to_airport=Airport(code=_pegar(t, 6), name=_pegar(t, 5)),
+                departure=SimpleDatetime(date=tuple(_pegar(t, 20) or ()), time=hora(_pegar(t, 8))),
+                arrival=SimpleDatetime(date=tuple(_pegar(t, 21) or ()), time=hora(_pegar(t, 10))),
+                duration=_pegar(t, 11),
+                plane_type=_pegar(t, 17),
             ))
+        resultados.append(Flights(
+            type=_pegar(voo, 0), price=preco, airlines=_pegar(voo, 1) or [],
+            flights=trechos, carbon=None,
+        ))
     return resultados
+
+
+# Para algumas rotas (ex.: saindo de FLN), o Google não manda os voos junto com
+# a página: o navegador pede os resultados depois, numa chamada à parte
+# (GetShoppingResults). Aqui abrimos a página num Chromium de verdade e lemos
+# essa resposta.
+
+def _json_aninhado(dados, profundidade=0):
+    """Percorre listas e strings que contêm JSON, achando itens de voo."""
+    if profundidade > 8:
+        return
+    if isinstance(dados, str):
+        texto = dados.strip()
+        if texto[:1] in "[{" and len(texto) > 50:
+            try:
+                yield from _json_aninhado(json.loads(texto), profundidade + 1)
+            except ValueError:
+                pass
+        return
+    if isinstance(dados, list):
+        if _eh_item_voo(dados):
+            yield dados
+            return
+        for x in dados:
+            yield from _json_aninhado(x, profundidade + 1)
+
+
+def voos_da_resposta_rpc(texto):
+    """Voos de uma resposta GetShoppingResults (")]}'" + linhas de JSON)."""
+    itens = []
+    for linha in texto.splitlines():
+        linha = linha.strip()
+        if linha.startswith("["):
+            try:
+                itens.extend(_json_aninhado(json.loads(linha)))
+            except ValueError:
+                continue
+    vistos, unicos = set(), []
+    for item in itens:  # a mesma opção pode vir repetida em blocos diferentes
+        chave = json.dumps(item[0], sort_keys=True)[:500] + str(_pegar(item, 1, 0, 1))
+        if chave not in vistos:
+            vistos.add(chave)
+            unicos.append(item)
+    return _itens_para_voos(unicos)
+
+
+def _buscar_com_navegador(params):
+    """Abre a busca no Chromium e devolve os voos das respostas GetShoppingResults."""
+    from urllib.parse import urlencode
+
+    from playwright.sync_api import sync_playwright
+
+    url = "https://www.google.com/travel/flights/search?" + urlencode(params)
+    respostas = []
+    with sync_playwright() as p:
+        navegador = p.chromium.launch(headless=True)
+        try:
+            pagina = navegador.new_page(locale="pt-BR")
+            pagina.on("response", lambda r: respostas.append(r)
+                      if "GetShoppingResults" in r.url else None)
+            pagina.goto(url, wait_until="domcontentloaded", timeout=TIMEOUT_SEGUNDOS * 1000)
+            try:  # página de consentimento de cookies, se aparecer
+                pagina.get_by_role("button", name=re.compile(
+                    r"Aceitar tudo|Rejeitar tudo|Accept all|Reject all")).first.click(timeout=3000)
+            except Exception:
+                pass
+            for _ in range(20):  # espera os resultados chegarem (até ~20 s)
+                pagina.wait_for_timeout(1000)
+                if _voos_das_respostas(respostas):
+                    pagina.wait_for_timeout(2000)  # deixa chegar o resto da lista
+                    break
+            voos = _voos_das_respostas(respostas)
+        finally:
+            navegador.close()
+    voos = [v for v in voos if v.price]
+    if not voos:
+        raise SemVoos(f"o Google não mostra voos para estas datas (navegador: {len(respostas)} resposta(s))")
+    return voos
+
+
+def _navegador_ativo():
+    # 4 falhas seguidas sem nenhum sucesso: desiste do navegador nesta execução
+    return _navegador["sucessos"] > 0 or _navegador["falhas_seguidas"] < 4
+
+
+def _navegador_com_controle(params):
+    try:
+        voos = _buscar_com_navegador(params)
+    except Exception:
+        _navegador["falhas_seguidas"] += 1
+        raise
+    _navegador["falhas_seguidas"] = 0
+    _navegador["sucessos"] += 1
+    return voos
+
+
+def _voos_das_respostas(respostas):
+    voos = []
+    for r in list(respostas):
+        try:
+            voos.extend(voos_da_resposta_rpc(r.text()))
+        except Exception:
+            continue  # resposta ainda incompleta ou em outro formato
+    return voos
 
 
 # Formato completo usado pelas URLs do próprio Google Flights. A fast-flights
@@ -369,6 +482,13 @@ def buscar_mais_barato(query):
         # tentativa depois de uma pausa maior.
         tentativas.append(("formato Google, 2ª tentativa", google))
 
+    # Origem que já precisou do navegador nesta execução: vai direto para ele.
+    if combo and USAR_NAVEGADOR and combo["origem"] in _navegador["direto"]:
+        try:
+            return min(_navegador_com_controle(google), key=lambda r: r.price)
+        except Exception:
+            pass  # cai nas tentativas normais
+
     ultimo_erro, html = None, None
     for i, (nome, params) in enumerate(tentativas):
         if i == 2 and isinstance(ultimo_erro, SemVoos):
@@ -382,6 +502,13 @@ def buscar_mais_barato(query):
             ultimo_erro = e
             continue
         return min(resultados, key=lambda r: r.price)
+    if combo and isinstance(ultimo_erro, SemVoos) and USAR_NAVEGADOR and _navegador_ativo():
+        try:
+            voos = _navegador_com_controle(google)
+            _navegador["direto"].add(combo["origem"])
+            return min(voos, key=lambda r: r.price)
+        except Exception as e:
+            ultimo_erro = e if isinstance(e, RuntimeError) else RuntimeError(f"navegador: {e}")
     if combo and html:
         _diagnosticar(html, descrever(combo).replace(" ", "_").replace("→", "-"))
     raise ultimo_erro
