@@ -1,0 +1,76 @@
+name: Alerta de passagens FLN → Espanha
+
+on:
+  schedule:
+    - cron: "30 */6 * * *"  # a cada 6 horas (UTC), meia hora depois do alerta de São Paulo
+  workflow_dispatch:
+    inputs:
+      resumo:
+        description: "Buscar e mandar e-mail com os preços atuais, mesmo acima do alvo"
+        type: boolean
+        default: false
+      teste_email:
+        description: "Só enviar um e-mail de teste (sem buscar preços)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: alerta-passagens-fln
+  cancel-in-progress: false
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Verificar preços
+        env:
+          EMAIL_REMETENTE: ${{ secrets.EMAIL_REMETENTE }}
+          EMAIL_SENHA: ${{ secrets.EMAIL_SENHA }}
+          EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
+          TESTE_EMAIL: ${{ inputs.teste_email }}
+          RESUMO: ${{ inputs.resumo }}
+          ARQUIVO_ROTAS: rotas_fln.json
+          ARQUIVO_HISTORICO: historico_fln.json
+          ARQUIVO_CONSULTAS: consultas_fln.json
+          PASTA_DEBUG: debug_fln
+        shell: bash  # usa pipefail: o passo falha se o script falhar
+        run: python -u alerta.py 2>&1 | tee ultima_execucao_fln.log
+
+      - name: Guardar páginas de diagnóstico
+        if: always() && hashFiles('debug_fln/*.html') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostico-fln
+          path: debug_fln/
+          retention-days: 7
+
+      - name: Salvar histórico e consultas
+        if: always()
+        run: |
+          if git diff --quiet -- historico_fln.json consultas_fln.json ultima_execucao_fln.log && git ls-files --error-unmatch ultima_execucao_fln.log >/dev/null 2>&1; then
+            echo "Histórico sem alterações."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add historico_fln.json consultas_fln.json ultima_execucao_fln.log
+          git commit -m "Atualiza histórico e consultas de preços FLN [skip ci]"
+          # os dois alertas podem commitar ao mesmo tempo: tenta de novo se o push for recusado
+          for i in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            sleep $((i * 5))
+          done

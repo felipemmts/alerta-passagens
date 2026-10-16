@@ -19,6 +19,10 @@ Consulta o Google Flights (via [fast-flights](https://github.com/AWeirdDev/fast-
 - Cada busca tem até 3 tentativas, um limite de 40 s, e as datas que falharem são tentadas de novo numa segunda rodada. Se ainda assim falharem, ficam de fora e a execução segue. O envio de e-mail também tem 3 tentativas.
 - O e-mail traz um botão que abre a busca direto no Google Flights e as 5 datas mais baratas, cada uma com seu link.
 
+## Alerta FLN → Espanha
+
+Um segundo workflow (`.github/workflows/alerta_fln.yml`) faz a mesma coisa saindo de Florianópolis para Madri e Barcelona, com arquivos próprios: `rotas_fln.json`, `historico_fln.json`, `consultas_fln.json` e `ultima_execucao_fln.log`. Ele roda meia hora depois do alerta de São Paulo, usa os mesmos Secrets e é independente: um não afeta o outro. `estadia_max_dias` pula combinações com estadia longa demais, para as quais o Google não mostra voos.
+
 ## Configuração
 
 1. Ative a verificação em duas etapas no Gmail e crie uma **senha de app** (https://myaccount.google.com/apppasswords).

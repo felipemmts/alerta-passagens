@@ -24,10 +24,11 @@ from email.message import EmailMessage
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent
-ARQ_ROTAS = BASE / "rotas.json"
-ARQ_HISTORICO = BASE / "historico.json"
-ARQ_CONSULTAS = BASE / "consultas.json"
-PASTA_DEBUG = BASE / "debug"
+# Cada alerta (workflow) pode ter os próprios arquivos: veja alerta_fln.yml.
+ARQ_ROTAS = BASE / os.environ.get("ARQUIVO_ROTAS", "rotas.json")
+ARQ_HISTORICO = BASE / os.environ.get("ARQUIVO_HISTORICO", "historico.json")
+ARQ_CONSULTAS = BASE / os.environ.get("ARQUIVO_CONSULTAS", "consultas.json")
+PASTA_DEBUG = BASE / os.environ.get("PASTA_DEBUG", "debug")
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORTA = 465
@@ -124,6 +125,9 @@ def expandir(rota, hoje=None):
             continue
         if volta and date.fromisoformat(volta) <= date.fromisoformat(ida):
             continue
+        if (volta and rota.get("estadia_max_dias")
+                and (date.fromisoformat(volta) - date.fromisoformat(ida)).days > rota["estadia_max_dias"]):
+            continue  # o Google não mostra voos para estadias longas demais
         combos.append({**rota, "origem": o, "destino": d, "ida": ida, "volta": volta})
     return combos
 
@@ -792,7 +796,7 @@ def processar_rota(rota, moeda, historico, buscar=None, montar=None,
     }
 
 
-def juntar_secoes(secoes):
+def juntar_secoes(secoes, titulo="Alerta de passagens"):
     """Um e-mail só com as seções de todas as rotas."""
     assunto = secoes[0]["assunto"]
     if len(secoes) > 1:
@@ -806,7 +810,7 @@ def juntar_secoes(secoes):
         f'style="background:#f1f3f4"><tr><td align="center" style="padding:28px 12px">'
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
         f'style="max-width:600px"><tr><td style="padding:0 4px 16px;{_FONTE};font-size:14px;'
-        f'color:#5f6368"><b style="color:#202124">✈️ Alerta de passagens</b> · busca de {agora}</td></tr>'
+        f'color:#5f6368"><b style="color:#202124">✈️ {titulo}</b> · busca de {agora}</td></tr>'
         f'<tr><td>{cartoes}</td></tr>'
         f'<tr><td style="padding:20px 4px 0;{_FONTE};font-size:11px;line-height:1.6;color:#80868b">'
         f'Preços do Google Flights no momento da busca; podem mudar. Datas e alvos ficam em '
@@ -862,7 +866,7 @@ def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
     erro_email = False
     if secoes:
         try:
-            enviar(*juntar_secoes(secoes))
+            enviar(*juntar_secoes(secoes, config.get("titulo", "Alerta de passagens")))
             print(f"E-mail enviado ({len(secoes)} rota(s)).")
             agora = datetime.now(timezone.utc).isoformat(timespec="seconds")
             for secao in secoes:  # só grava o aviso depois que o e-mail saiu
