@@ -30,6 +30,7 @@ ARQ_ROTAS = BASE / os.environ.get("ARQUIVO_ROTAS", "rotas.json")
 ARQ_HISTORICO = BASE / os.environ.get("ARQUIVO_HISTORICO", "historico.json")
 ARQ_CONSULTAS = BASE / os.environ.get("ARQUIVO_CONSULTAS", "consultas.json")
 PASTA_DEBUG = BASE / os.environ.get("PASTA_DEBUG", "debug")
+ARQ_PROGRESSO = BASE / os.environ.get("ARQUIVO_PROGRESSO", "progresso.json")
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORTA = 465
@@ -38,6 +39,11 @@ DIAS_CONSULTAS = 90  # quanto tempo de consultas guardar em consultas.json
 PAUSA_SEGUNDOS = float(os.environ.get("PAUSA_SEGUNDOS", "3"))  # entre buscas no Google
 TIMEOUT_SEGUNDOS = 40  # por requisição ao Google: se travar, desiste e segue
 TENTATIVAS_EMAIL = 3
+# Busca em lotes: cada execução consulta só LOTE combinações e a próxima continua
+# de onde parou. 0 = consulta todas de uma vez.
+LOTE = int(os.environ.get("LOTE", "0") or 0)
+FALHAS_PARA_PARAR = 3      # falhas seguidas = o Google parou de responder: encerra a execução
+VALIDADE_HORAS = 36        # preço de um lote anterior vale para o e-mail por este tempo
 # Prazo da execução: perto dele, para de buscar e envia o que já encontrou
 # (o GitHub mata a Action no timeout e aí tudo se perderia).
 PRAZO_MINUTOS = float(os.environ.get("PRAZO_MINUTOS", "0") or 0)
@@ -691,7 +697,8 @@ def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=
     texto = "\n".join(linhas)
 
     if cobertura and cobertura[0] < cobertura[1]:
-        texto += f"\n\nPreços encontrados para {cobertura[0]} de {cobertura[1]} combinações de datas."
+        texto += (f"\n\nPreços conhecidos para {cobertura[0]} de {cobertura[1]} combinações de datas; "
+                  "as outras entram nas próximas buscas.")
     html = _cartao_html(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats,
                         opcoes, modo_resumo, cobertura)
     return assunto, texto, html
@@ -797,8 +804,8 @@ def _cartao_html(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats,
     if ultimo_avisado is not None and not modo_resumo:
         rodape.append(f"Último aviso: {P(ultimo_avisado)} — o preço caiu de novo")
     if cobertura and cobertura[0] < cobertura[1]:
-        rodape.append(f"Preços encontrados para {cobertura[0]} de {cobertura[1]} combinações de datas "
-                      "(as outras ficaram sem resposta do Google ou sem tempo nesta busca)")
+        rodape.append(f"Preços conhecidos para {cobertura[0]} de {cobertura[1]} combinações de datas "
+                      "(as outras entram nas próximas buscas)")
     if stats and stats["n"] > 1:
         rodape.append(f"Últimos {DIAS_CONSULTAS} dias: mínimo {P(stats['min'])} · "
                       f"mediana {P(stats['mediana'])} ({stats['n']} consultas)")
@@ -956,8 +963,88 @@ def buscar_combinacoes(chave, combos, moeda, buscar, montar, limite=None):
     return (*melhor, todos)
 
 
+def _id_combo(c):
+    return f"{c['origem']}-{c['destino']}-{c['ida']}-{c.get('volta') or ''}"
+
+
+def ordem_intercalada(ids, tamanho_lote):
+    """Ordena para que cada lote cubra o período todo (datas salteadas).
+
+    Com 76 combinações e lotes de 20, o 1º lote pega a 1ª, 5ª, 9ª...; o 2º, a
+    2ª, 6ª, 10ª... Assim cada execução já dá uma visão geral e as próximas
+    completam os buracos.
+    """
+    ids = sorted(ids, key=lambda i: (i.split("-", 2)[2], i))  # por data de ida/volta
+    passo = max(1, -(-len(ids) // max(tamanho_lote, 1)))      # nº de lotes no ciclo
+    return [ids[j] for inicio in range(passo) for j in range(inicio, len(ids), passo)]
+
+
+def buscar_em_lotes(chave, combos, moeda, buscar, montar, limite, progresso):
+    """Busca o próximo lote da fila e junta com os preços recentes dos lotes anteriores.
+
+    Devolve (combo, resumo, preco, todos, cobertura) da combinação mais barata
+    entre os preços válidos. Para a execução quando o Google falha várias vezes
+    seguidas; o que faltou volta para a fila da próxima.
+    """
+    por_id = {_id_combo(c): c for c in combos}
+    estado = progresso.setdefault(chave, {"fila": [], "precos": {}})
+    fila = [i for i in estado.get("fila", []) if i in por_id]
+    if not fila:
+        fila = ordem_intercalada(list(por_id), LOTE)
+        print(f"[{chave}]   novo ciclo: {len(fila)} combinações em lotes de {LOTE}")
+    lote, resto = fila[:LOTE], fila[LOTE:]
+
+    precos = estado.setdefault("precos", {})
+    agora = datetime.now(timezone.utc)
+    devolver, seguidas, consultadas = [], 0, 0
+    for n, cid in enumerate(lote):
+        if seguidas >= FALHAS_PARA_PARAR or (limite is not None and time.monotonic() >= limite):
+            devolver.extend(lote[n:])
+            motivo = "o Google parou de responder" if seguidas >= FALHAS_PARA_PARAR else "tempo esgotado"
+            print(f"[{chave}]   {motivo}: encerrando; {len(lote) - n} combinação(ões) ficam para a próxima execução")
+            break
+        if n and PAUSA_SEGUNDOS:
+            time.sleep(PAUSA_SEGUNDOS)
+        combo = por_id[cid]
+        try:
+            voo = buscar(montar(combo, moeda))
+        except SemVoos as e:  # resposta definitiva: não volta para a fila
+            seguidas = 0
+            precos[cid] = {"preco": None, "em": agora.isoformat(timespec="seconds")}
+            print(f"[{chave}]   {descrever(combo)}: {e}")
+            continue
+        except Exception as e:
+            seguidas += 1
+            devolver.append(cid)
+            print(f"[{chave}]   {descrever(combo)}: sem resposta do Google ({e})")
+            continue
+        seguidas, consultadas = 0, consultadas + 1
+        precos[cid] = {"preco": int(voo.price), "em": agora.isoformat(timespec="seconds"),
+                       "resumo": resumir_voo(voo)}
+        print(f"[{chave}]   {descrever(combo)}: {fmt_preco(voo.price, moeda)}")
+
+    estado["fila"] = resto + devolver
+    # só guarda combinações que ainda existem; preço velho demais não vale
+    validade = (agora - timedelta(hours=VALIDADE_HORAS)).isoformat()
+    for cid in list(precos):
+        if cid not in por_id or precos[cid]["em"] < validade:
+            del precos[cid]
+    validos = sorted(((cid, p) for cid, p in precos.items() if p.get("preco")),
+                     key=lambda cp: cp[1]["preco"])
+    print(f"[{chave}]   lote: {consultadas} preço(s) de {len(lote)}; fila: {len(estado['fila'])} restante(s); "
+          f"preços válidos: {len(validos)} de {len(por_id)}")
+    if not validos:
+        raise RuntimeError("nenhum preço válido ainda (o Google não respondeu)")
+    from types import SimpleNamespace
+    todos = [(por_id[cid], SimpleNamespace(price=p["preco"])) for cid, p in validos]
+    cid, melhor = validos[0]
+    resumo = melhor.get("resumo") or {"companhia": "?", "partida": "?", "chegada": "?",
+                                       "escalas": 0, "conexoes": []}
+    return por_id[cid], resumo, melhor["preco"], todos, (len(validos), len(por_id))
+
+
 def processar_rota(rota, moeda, historico, buscar=None, montar=None,
-                   consultas=None, hoje=None, modo_resumo=False, limite=None):
+                   consultas=None, hoje=None, modo_resumo=False, limite=None, progresso=None):
     """Busca uma rota e devolve a seção do e-mail (ou None se não há o que avisar).
 
     A seção traz "aviso": o que gravar no histórico depois que o e-mail sair.
@@ -969,8 +1056,12 @@ def processar_rota(rota, moeda, historico, buscar=None, montar=None,
 
     chave = chave_rota(rota)
     combos = expandir(rota, hoje)
-    combo, query, voo, todos = buscar_combinacoes(chave, combos, moeda, buscar, montar, limite)
-    preco = int(voo.price)
+    if LOTE and progresso is not None:
+        combo, resumo, preco, todos, cobertura = buscar_em_lotes(
+            chave, combos, moeda, buscar, montar, limite, progresso)
+    else:
+        combo, query, voo, todos = buscar_combinacoes(chave, combos, moeda, buscar, montar, limite)
+        preco, resumo, cobertura = int(voo.price), resumir_voo(voo), (len(todos), len(combos))
 
     registros = consultas.setdefault(chave, [])
     registros.append({
@@ -999,8 +1090,8 @@ def processar_rota(rota, moeda, historico, buscar=None, montar=None,
     mesmos = [r for r in registros if r.get("moeda", "EUR") == moeda]
     opcoes = [(c, v, link_busca(c, moeda)) for c, v in todos[:5]]
     assunto, texto, html = montar_email(
-        rota, combo, moeda, preco, resumir_voo(voo), link_busca(combo, moeda),
-        anterior, estatisticas(mesmos), opcoes, modo_resumo, (len(todos), len(combos)))
+        rota, combo, moeda, preco, resumo, link_busca(combo, moeda),
+        anterior, estatisticas(mesmos), opcoes, modo_resumo, cobertura)
     return {
         "chave": chave, "assunto": assunto, "texto": texto, "html": html,
         "aviso": {"ultimo_preco_avisado": novo, "moeda": moeda} if avisar and not modo_resumo else None,
@@ -1038,6 +1129,7 @@ def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
     rotas = config.get("rotas", [])
     historico = carregar_json(ARQ_HISTORICO, {})
     consultas = carregar_json(ARQ_CONSULTAS, {})
+    progresso = carregar_json(ARQ_PROGRESSO, {}) if LOTE else None
 
     ativas = [r for r in rotas if not rota_expirada(r, hoje)]
     for r in rotas:
@@ -1053,6 +1145,11 @@ def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
             if not consultas[chave]:
                 del consultas[chave]
         salvar_json(ARQ_CONSULTAS, consultas)
+        if progresso is not None:
+            for chave in list(progresso):  # remove buscas que saíram do rotas.json
+                if chave not in {chave_rota(r) for r in rotas}:
+                    del progresso[chave]
+            salvar_json(ARQ_PROGRESSO, progresso)
 
     if not ativas:
         print("Nenhuma rota ativa.")
@@ -1069,7 +1166,7 @@ def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
             limite = time.monotonic() + max(fatia, 0)
         try:
             secao = processar_rota(rota, moeda, historico, buscar, montar, consultas, hoje,
-                                   modo_resumo, limite)
+                                   modo_resumo, limite, progresso)
         except Exception as e:  # uma rota com erro não derruba as outras
             falhas += 1
             print(f"[{chave_rota(rota)}] ERRO: {e}", file=sys.stderr)

@@ -12,11 +12,13 @@ Consulta o Google Flights pelo GitHub Actions (via [fast-flights](https://github
 - Avisa quando o preço fica abaixo de `preco_alvo` (🔥 até `preco_excelente`). Depois de um aviso, só avisa de novo se cair pelo menos `queda_minima` abaixo do último preço avisado. Se o preço voltar a ficar acima do alvo, a próxima queda avisa de novo.
 - O e-mail traz um botão que abre a busca no Google Flights e as 5 combinações mais baratas, cada uma com seu link. Quando há mais de uma busca com novidade, sai um e-mail só.
 - Quando a consulta direta não traz voos (acontece em algumas rotas e em estadias longas), a busca é feita num navegador (Playwright). `navegador_direto: true` pula a consulta direta.
-- Cada busca tem várias tentativas e as combinações que falharem são tentadas de novo em mais duas rodadas. O workflow tem um prazo (`PRAZO_MINUTOS`) menor que o limite do GitHub: perto dele, para de buscar e envia o que já encontrou.
+- Busca em lotes (`LOTE` no workflow): cada execução consulta só parte das combinações, salteadas pelo período todo, e a próxima continua de onde parou (`progresso.json`). O e-mail considera os preços das últimas 36 h de todos os lotes.
+- Se o Google falhar 3 vezes seguidas, a execução para na hora e o que faltou volta para a fila. Há também um prazo (`PRAZO_MINUTOS`): perto dele, para de buscar e envia o que já tem.
 - `historico.json`: último preço avisado por busca.
+- `progresso.json`: fila de combinações ainda não consultadas no ciclo e últimos preços de cada uma.
 - `consultas.json`: menor preço de cada execução, guardado por 90 dias. O e-mail mostra o mínimo e a mediana do período.
 - `ultima_execucao.log`: log da última execução.
-- O workflow faz commit desses três arquivos de volta no repositório.
+- O workflow faz commit desses arquivos de volta no repositório.
 
 Exemplo de busca: ida de Lisboa para Vancouver em qualquer dia de 10 a 15/03, ficando 20 ou 25 dias:
 
