@@ -50,7 +50,7 @@ jobs:
         run: python -u alerta.py 2>&1 | tee ultima_execucao.log
 
       - name: Guardar páginas de diagnóstico
-        if: always() && hashFiles('debug/*.html') != ''
+        if: always() && hashFiles('debug/*') != ''
         uses: actions/upload-artifact@v4
         with:
           name: diagnostico

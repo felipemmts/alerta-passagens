@@ -327,38 +327,79 @@ def voos_da_resposta_rpc(texto):
     return _itens_para_voos(unicos)
 
 
+_pw = {}  # navegador aberto uma vez por execução e reaproveitado
+
+
+def _navegador_aberto():
+    """Contexto do Chromium (abre na primeira chamada; fecha ao sair do programa)."""
+    if "contexto" not in _pw:
+        import atexit
+
+        from playwright.sync_api import sync_playwright
+
+        _pw["playwright"] = sync_playwright().start()
+        _pw["navegador"] = _pw["playwright"].chromium.launch(headless=True)
+        _pw["contexto"] = _pw["navegador"].new_context(locale="pt-BR")
+        atexit.register(_fechar_navegador)
+    return _pw["contexto"]
+
+
+def _fechar_navegador():
+    try:
+        _pw.pop("navegador").close()
+        _pw.pop("playwright").stop()
+    except Exception:
+        pass
+    _pw.clear()
+
+
 def _buscar_com_navegador(params):
     """Abre a busca no Chromium e devolve os voos das respostas GetShoppingResults."""
     from urllib.parse import urlencode
 
-    from playwright.sync_api import sync_playwright
-
     url = "https://www.google.com/travel/flights/search?" + urlencode(params)
     respostas = []
-    with sync_playwright() as p:
-        navegador = p.chromium.launch(headless=True)
-        try:
-            pagina = navegador.new_page(locale="pt-BR")
-            pagina.on("response", lambda r: respostas.append(r)
-                      if "GetShoppingResults" in r.url else None)
-            pagina.goto(url, wait_until="domcontentloaded", timeout=TIMEOUT_SEGUNDOS * 1000)
-            try:  # página de consentimento de cookies, se aparecer
-                pagina.get_by_role("button", name=re.compile(
-                    r"Aceitar tudo|Rejeitar tudo|Accept all|Reject all")).first.click(timeout=3000)
-            except Exception:
-                pass
-            for _ in range(20):  # espera os resultados chegarem (até ~20 s)
-                pagina.wait_for_timeout(1000)
-                if _voos_das_respostas(respostas):
-                    pagina.wait_for_timeout(2000)  # deixa chegar o resto da lista
-                    break
+    pagina = _navegador_aberto().new_page()
+    try:
+        pagina.on("response", lambda r: respostas.append(r) if "GetShoppingResults" in r.url else None)
+        pagina.goto(url, wait_until="domcontentloaded", timeout=TIMEOUT_SEGUNDOS * 1000)
+        botao = pagina.get_by_role("button", name=re.compile(
+            r"Aceitar tudo|Rejeitar tudo|Accept all|Reject all"))
+        if botao.count():  # página de consentimento de cookies (só na primeira vez)
+            botao.first.click(timeout=5000)
+        voos, depois_da_resposta = [], 0
+        for _ in range(30):  # espera os resultados chegarem (até ~15 s)
+            pagina.wait_for_timeout(500)
             voos = _voos_das_respostas(respostas)
-        finally:
-            navegador.close()
+            if voos:
+                pagina.wait_for_timeout(800)  # deixa chegar o resto da lista
+                voos = _voos_das_respostas(respostas)
+                break
+            if respostas:
+                depois_da_resposta += 1
+                if depois_da_resposta >= 6:  # respondeu há 3 s e sem voos: desiste
+                    break
+        if not voos and respostas:  # respondeu, mas não entendemos: guarda para análise
+            PASTA_DEBUG.mkdir(exist_ok=True)
+            n = len(list(PASTA_DEBUG.glob("navegador_*.txt")))
+            if n < 5:
+                (PASTA_DEBUG / f"navegador_{n}.txt").write_text(
+                    url + "\n\n" + "\n---\n".join(_texto(r) for r in respostas), encoding="utf-8")
+            if n == 0:
+                print(f"  diagnóstico navegador: {_texto(respostas[0])[:400]!r}")
+    finally:
+        pagina.close()
     voos = [v for v in voos if v.price]
     if not voos:
         raise SemVoos(f"o Google não mostra voos para estas datas (navegador: {len(respostas)} resposta(s))")
     return voos
+
+
+def _texto(resposta):
+    try:
+        return resposta.text()
+    except Exception as e:
+        return f"(sem corpo: {e})"
 
 
 def _navegador_ativo():

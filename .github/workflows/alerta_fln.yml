@@ -54,7 +54,7 @@ jobs:
         run: python -u alerta.py 2>&1 | tee ultima_execucao_fln.log
 
       - name: Guardar páginas de diagnóstico
-        if: always() && hashFiles('debug_fln/*.html') != ''
+        if: always() && hashFiles('debug_fln/*') != ''
         uses: actions/upload-artifact@v4
         with:
           name: diagnostico-fln

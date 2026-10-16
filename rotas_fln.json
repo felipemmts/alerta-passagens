@@ -17,8 +17,8 @@
       "estadia_max_dias": 32,
       "adultos": 1,
       "max_escalas": null,
-      "preco_alvo": 4850,
-      "preco_excelente": 4550
+      "preco_alvo": 5450,
+      "preco_excelente": 5100
     },
     {
       "nome": "FLN → Espanha · Soluções baratas: ida 15–25/01, volta 30 dias depois",
@@ -32,8 +32,8 @@
       "estadia_dias": 30,
       "adultos": 1,
       "max_escalas": null,
-      "preco_alvo": 4600,
-      "preco_excelente": 4300
+      "preco_alvo": 5200,
+      "preco_excelente": 4900
     }
   ]
 }
