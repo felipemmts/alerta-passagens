@@ -24,7 +24,7 @@ concurrency:
 jobs:
   verificar:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
 
@@ -45,6 +45,7 @@ jobs:
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
           TESTE_EMAIL: ${{ inputs.teste_email }}
           RESUMO: ${{ inputs.resumo }}
+          PRAZO_MINUTOS: "35"  # para de buscar e envia o que tem antes do timeout do job
           USAR_NAVEGADOR: "true"
           PAUSA_SEGUNDOS: "1"  # o próprio navegador já espaça as buscas
           ARQUIVO_ROTAS: rotas_fln.json

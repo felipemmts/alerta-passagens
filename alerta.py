@@ -38,6 +38,16 @@ DIAS_CONSULTAS = 90  # quanto tempo de consultas guardar em consultas.json
 PAUSA_SEGUNDOS = float(os.environ.get("PAUSA_SEGUNDOS", "3"))  # entre buscas no Google
 TIMEOUT_SEGUNDOS = 40  # por requisição ao Google: se travar, desiste e segue
 TENTATIVAS_EMAIL = 3
+# Prazo da execução: perto dele, para de buscar e envia o que já encontrou
+# (o GitHub mata a Action no timeout e aí tudo se perderia).
+PRAZO_MINUTOS = float(os.environ.get("PRAZO_MINUTOS", "0") or 0)
+_INICIO = time.monotonic()
+
+
+def segundos_restantes():
+    if not PRAZO_MINUTOS:
+        return float("inf")
+    return PRAZO_MINUTOS * 60 - (time.monotonic() - _INICIO)
 # Plano C para rotas em que o Google só manda os voos depois de carregar a página.
 USAR_NAVEGADOR = os.environ.get("USAR_NAVEGADOR", "").lower() == "true"
 _navegador = {"direto": set(), "falhas_seguidas": 0, "sucessos": 0}  # estado durante a execução
@@ -623,7 +633,7 @@ def _fmt_data(iso):
 
 
 def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=None,
-                 opcoes=None, modo_resumo=False):
+                 opcoes=None, modo_resumo=False, cobertura=None):
     """Devolve (assunto, texto, html). opcoes = [(combo, voo, link), ...] mais baratas."""
     P = lambda v: fmt_preco(v, moeda)  # noqa: E731
     trajeto = f"{combo['origem']} → {combo['destino']}"
@@ -678,8 +688,10 @@ def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=
             linhas.append(f"  {_fmt_data(c['ida'])}{volta}: {P(v.price)}  {l}")
     texto = "\n".join(linhas)
 
+    if cobertura and cobertura[0] < cobertura[1]:
+        texto += f"\n\nPreços encontrados para {cobertura[0]} de {cobertura[1]} combinações de datas."
     html = _cartao_html(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats,
-                        opcoes, modo_resumo)
+                        opcoes, modo_resumo, cobertura)
     return assunto, texto, html
 
 
@@ -712,7 +724,7 @@ def _horario(resumo):
 
 
 def _cartao_html(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats, opcoes,
-                 modo_resumo):
+                 modo_resumo, cobertura=None):
     from html import escape as e
 
     P = lambda v: e(fmt_preco(v, moeda))  # noqa: E731
@@ -782,6 +794,9 @@ def _cartao_html(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats,
     rodape = [f"Alvo: abaixo de {P(alvo)}" + (f" · excelente até {P(excelente)}" if excelente else "")]
     if ultimo_avisado is not None and not modo_resumo:
         rodape.append(f"Último aviso: {P(ultimo_avisado)} — o preço caiu de novo")
+    if cobertura and cobertura[0] < cobertura[1]:
+        rodape.append(f"Preços encontrados para {cobertura[0]} de {cobertura[1]} combinações de datas "
+                      "(as outras ficaram sem resposta do Google ou sem tempo nesta busca)")
     if stats and stats["n"] > 1:
         rodape.append(f"Últimos {DIAS_CONSULTAS} dias: mínimo {P(stats['min'])} · "
                       f"mediana {P(stats['mediana'])} ({stats['n']} consultas)")
@@ -887,13 +902,15 @@ def descrever(combo):
     return f"{combo['origem']}→{combo['destino']} ida {combo['ida']}{volta}"
 
 
-def buscar_combinacoes(chave, combos, moeda, buscar, montar):
+def buscar_combinacoes(chave, combos, moeda, buscar, montar, limite=None):
     """Busca cada combinação e devolve (combo, query, voo, todos) da mais barata.
 
     Falhas individuais são registradas e ignoradas; só lança exceção se
-    todas as combinações falharem.
+    todas as combinações falharem. `limite` (time.monotonic) é o horário em
+    que esta rota para de buscar e fica com o que já achou.
     """
     melhor, pendentes, erro, todos = None, list(combos), None, []
+    sem_tempo = []
     # O Google falha de forma passageira em algumas datas: as que falharem na
     # primeira rodada são tentadas de novo numa segunda, depois de uma pausa.
     for rodada in (1, 2):
@@ -901,6 +918,11 @@ def buscar_combinacoes(chave, combos, moeda, buscar, montar):
         if rodada == 2 and pendentes and PAUSA_SEGUNDOS:
             time.sleep(PAUSA_SEGUNDOS * 5)
         for i, combo in enumerate(pendentes):
+            if limite is not None and time.monotonic() >= limite:
+                sem_tempo = pendentes[i:] if rodada == 1 else []
+                if rodada == 2:
+                    falharam.extend(pendentes[i:])
+                break
             if i and PAUSA_SEGUNDOS:
                 time.sleep(PAUSA_SEGUNDOS)  # evita bombardear o Google
             try:
@@ -919,18 +941,20 @@ def buscar_combinacoes(chave, combos, moeda, buscar, montar):
             if melhor is None or voo.price < melhor[2].price:
                 melhor = (combo, query, voo)
         pendentes = falharam
-        if not pendentes:
+        if not pendentes or sem_tempo or (limite is not None and time.monotonic() >= limite):
             break
     for combo in pendentes:
         print(f"[{chave}]   {descrever(combo)}: sem resposta do Google ({erro})")
+    if sem_tempo:
+        print(f"[{chave}]   tempo da rota esgotado: {len(sem_tempo)} combinação(ões) não consultada(s)")
     if melhor is None:
-        raise erro
+        raise erro or RuntimeError("tempo esgotado antes de encontrar preços")
     todos.sort(key=lambda cv: cv[1].price)
     return (*melhor, todos)
 
 
 def processar_rota(rota, moeda, historico, buscar=None, montar=None,
-                   consultas=None, hoje=None, modo_resumo=False):
+                   consultas=None, hoje=None, modo_resumo=False, limite=None):
     """Busca uma rota e devolve a seção do e-mail (ou None se não há o que avisar).
 
     A seção traz "aviso": o que gravar no histórico depois que o e-mail sair.
@@ -941,7 +965,8 @@ def processar_rota(rota, moeda, historico, buscar=None, montar=None,
     consultas = consultas if consultas is not None else {}
 
     chave = chave_rota(rota)
-    combo, query, voo, todos = buscar_combinacoes(chave, expandir(rota, hoje), moeda, buscar, montar)
+    combos = expandir(rota, hoje)
+    combo, query, voo, todos = buscar_combinacoes(chave, combos, moeda, buscar, montar, limite)
     preco = int(voo.price)
 
     registros = consultas.setdefault(chave, [])
@@ -972,7 +997,7 @@ def processar_rota(rota, moeda, historico, buscar=None, montar=None,
     opcoes = [(c, v, link_busca(c, moeda)) for c, v in todos[:5]]
     assunto, texto, html = montar_email(
         rota, combo, moeda, preco, resumir_voo(voo), link_busca(combo, moeda),
-        anterior, estatisticas(mesmos), opcoes, modo_resumo)
+        anterior, estatisticas(mesmos), opcoes, modo_resumo, (len(todos), len(combos)))
     return {
         "chave": chave, "assunto": assunto, "texto": texto, "html": html,
         "aviso": {"ultimo_preco_avisado": novo, "moeda": moeda} if avisar and not modo_resumo else None,
@@ -1032,11 +1057,16 @@ def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
         return 0
 
     falhas, secoes = 0, []
-    for rota in ativas:
+    restantes = [len(expandir(r, hoje)) for r in ativas]
+    for n, rota in enumerate(ativas):
         rota = {"queda_minima": config.get("queda_minima", 0), **rota}
+        limite = None
+        if PRAZO_MINUTOS:  # cada rota fica com uma fatia do tempo que sobra
+            fatia = segundos_restantes() * restantes[n] / max(sum(restantes[n:]), 1)
+            limite = time.monotonic() + max(fatia, 0)
         try:
             secao = processar_rota(rota, moeda, historico, buscar, montar, consultas, hoje,
-                                   modo_resumo)
+                                   modo_resumo, limite)
         except Exception as e:  # uma rota com erro não derruba as outras
             falhas += 1
             print(f"[{chave_rota(rota)}] ERRO: {e}", file=sys.stderr)
