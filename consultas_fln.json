@@ -19,6 +19,28 @@
       "volta": "2027-02-15"
     }
   ],
+  "FLN → Espanha · Depois do Ano Novo: ida 01–10/01, volta 60 dias depois": [
+    {
+      "destino": "BCN",
+      "em": "2026-10-16T12:12:37+00:00",
+      "ida": "2027-01-01",
+      "moeda": "BRL",
+      "origem": "FLN",
+      "preco": 8119,
+      "volta": "2027-03-02"
+    }
+  ],
+  "FLN → Espanha · Depois do Natal: ida 26–31/12, volta 60 dias depois": [
+    {
+      "destino": "BCN",
+      "em": "2026-10-16T12:04:41+00:00",
+      "ida": "2026-12-31",
+      "moeda": "BRL",
+      "origem": "FLN",
+      "preco": 6139,
+      "volta": "2027-03-01"
+    }
+  ],
   "FLN → Espanha · Soluções baratas: ida 15–25/01, volta 30 dias depois": [
     {
       "destino": "MAD",
