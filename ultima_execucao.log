@@ -1,10 +1,7 @@
-[Busca principal]   FLN→MAD ida 2027-01-02 volta 2027-02-20: R$ 8.926
-[Busca principal]   FLN→MAD ida 2027-01-03 volta 2027-02-19: R$ 9.339
-[Busca principal]   FLN→BCN ida 2026-12-26 volta 2027-02-13: R$ 9.970
-  diagnóstico: url='https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTEyLTI2agcIARIDRkxOcgcIA' título='de Florianópolis a Barcelona | Google Voos' texto='Pular para o conteúdo principal Feedback de acessibilidade Explorar Voos Hotéis Aluguel por temporada Mudar a aparência Fazer login Carregando resultados Pesquisa de voo Ida e volta 1 Econômica Floria'
-[Busca principal]   FLN→BCN ida 2026-12-26 volta 2027-02-17: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   FLN→BCN ida 2026-12-26 volta 2027-02-21: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   FLN→BCN ida 2026-12-27 volta 2027-02-18: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   o Google parou de responder: encerrando; 14 combinação(ões) ficam para a próxima execução
-[Busca principal]   lote: 3 preço(s) de 20; fila: 52 restante(s); preços válidos: 18 de 76
-[Busca principal] menor preço: R$ 5.676 em FLN→MAD ida 2026-12-31 volta 2027-02-22 (alvo R$ 6.100, último aviso R$ 5.676)
+  diagnóstico: url='https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTEyLTI2agcIARIDRkxOcgcIA' título='de Florianópolis a Madrid | Google Voos' texto='Pular para o conteúdo principal Feedback de acessibilidade Explorar Voos Hotéis Aluguel por temporada Mudar a aparência Fazer login Carregando resultados Pesquisa de voo Ida e volta 1 Econômica Floria'
+[Busca principal]   FLN→MAD ida 2026-12-26 volta 2027-02-13: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   FLN→MAD ida 2026-12-26 volta 2027-02-17: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   FLN→MAD ida 2026-12-26 volta 2027-02-21: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   o Google parou de responder: encerrando; 17 combinação(ões) ficam para a próxima execução
+[Busca principal]   lote: 0 preço(s) de 20; fila: 52 restante(s); preços válidos: 8 de 76
+[Busca principal] menor preço: R$ 6.303 em FLN→MAD ida 2026-12-31 volta 2027-02-20 (alvo R$ 6.100, último aviso R$ 5.676)
