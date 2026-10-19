@@ -1,7 +1,17 @@
-  diagnóstico: url='https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTEyLTI5agcIARIDRkxOcgcIA' título='de Florianópolis a Barcelona | Google Voos' texto='Pular para o conteúdo principal Feedback de acessibilidade Explorar Voos Hotéis Aluguel por temporada Mudar a aparência Fazer login Carregando resultados Pesquisa de voo Ida e volta 1 Econômica Floria'
-[Busca principal]   FLN→BCN ida 2026-12-29 volta 2027-02-22: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   FLN→BCN ida 2026-12-30 volta 2027-02-21: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   FLN→BCN ida 2026-12-31 volta 2027-02-18: sem resposta do Google (o Google não respondeu a tempo (navegador))
-[Busca principal]   o Google parou de responder: encerrando; 17 combinação(ões) ficam para a próxima execução
-[Busca principal]   lote: 0 preço(s) de 20; fila: 36 restante(s); preços válidos: 19 de 76
+  diagnóstico: url='https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTEyLTI3agcIARIDRkxOcgcIA' título='de Florianópolis a Barcelona | Google Voos' texto='Pular para o conteúdo principal Feedback de acessibilidade Explorar Voos Hotéis Aluguel por temporada Mudar a aparência Fazer login Carregando resultados Pesquisa de voo Ida e volta 1 Econômica Floria'
+[Busca principal]   FLN→BCN ida 2026-12-27 volta 2027-02-20: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   FLN→BCN ida 2026-12-28 volta 2027-02-13: R$ 7.511
+[Busca principal]   FLN→BCN ida 2026-12-29 volta 2027-02-16: R$ 6.551
+[Busca principal]   FLN→BCN ida 2026-12-29 volta 2027-02-20: R$ 7.428
+[Busca principal]   FLN→BCN ida 2026-12-30 volta 2027-02-15: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   FLN→BCN ida 2026-12-30 volta 2027-02-19: R$ 6.290
+[Busca principal]   FLN→BCN ida 2026-12-31 volta 2027-02-16: sem resposta do Google (o Google respondeu com erro (navegador))
+[Busca principal]   FLN→BCN ida 2026-12-31 volta 2027-02-20: R$ 7.135
+[Busca principal]   FLN→BCN ida 2027-01-02 volta 2027-02-20: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   FLN→MAD ida 2026-12-26 volta 2027-02-15: R$ 7.233
+[Busca principal]   FLN→MAD ida 2026-12-26 volta 2027-02-19: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   FLN→MAD ida 2026-12-28 volta 2027-02-17: sem resposta do Google (o Google não respondeu a tempo (navegador))
+[Busca principal]   FLN→BCN ida 2026-12-26 volta 2027-02-17: sem resposta do Google (o Google respondeu com erro (navegador))
+[Busca principal]   o Google parou de responder: encerrando; 7 combinação(ões) ficam para a próxima execução
+[Busca principal]   lote: 6 preço(s) de 20; fila: 30 restante(s); preços válidos: 25 de 76
 [Busca principal] menor preço: R$ 6.175 em FLN→BCN ida 2026-12-28 volta 2027-02-15 (alvo R$ 6.100, último aviso nenhum)
