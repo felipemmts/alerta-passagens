@@ -10,6 +10,7 @@ Consulta o Google Flights pelo GitHub Actions (via [fast-flights](https://github
   - Volta: `volta` (data ou lista), o intervalo `volta_de`/`volta_ate`, ou `estadia_dias` (número ou lista: a volta é a ida mais a estadia). `volta_ate_max` descarta voltas depois dessa data.
   - Todas as combinações são consultadas e vale a mais barata.
 - Avisa quando o preço fica abaixo de `preco_alvo` (🔥 até `preco_excelente`). Depois de um aviso, só avisa de novo se cair pelo menos `queda_minima` abaixo do último preço avisado. Se o preço voltar a ficar acima do alvo, a próxima queda avisa de novo.
+- Também avisa quando o melhor preço iguala ou fica abaixo do **menor preço já visto** (não repete enquanto o preço continuar no recorde).
 - Resumo periódico (`resumo_cada_horas` em `rotas.json`, ex.: 48): mesmo sem novidade, manda um e-mail com o melhor preço do momento, mínimo/mediana/máximo dos últimos 2 dias e o menor preço já visto.
 - O e-mail traz um botão que abre a busca no Google Flights e as 5 combinações mais baratas, cada uma com seu link. Quando há mais de uma busca com novidade, sai um e-mail só.
 - Quando a consulta direta não traz voos (acontece em algumas rotas e em estadias longas), a busca é feita num navegador (Playwright). `navegador_direto: true` pula a consulta direta.

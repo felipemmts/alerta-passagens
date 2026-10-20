@@ -746,7 +746,7 @@ def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=
         ("Preço", f"{P(preco)} ({rota.get('adultos', 1)} adulto(s), ida e volta)" if combo.get("volta") else f"{P(preco)} ({rota.get('adultos', 1)} adulto(s))"),
         ("Preço-alvo", faixa),
     ]
-    if ultimo_avisado is not None and not modo_resumo:
+    if ultimo_avisado is not None and preco < ultimo_avisado:
         detalhes.append(("Último aviso", f"{P(ultimo_avisado)} (o preço caiu de novo)"))
     if stats:
         detalhes.append(("Histórico", f"mínimo {P(stats['min'])} / mediana {P(stats['mediana'])} "
@@ -896,7 +896,7 @@ def _cartao_html(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats,
 
     rodape = [] if modo_resumo else [
         f"Alvo: abaixo de {P(alvo)}" + (f" · excelente até {P(excelente)}" if excelente else "")]
-    if ultimo_avisado is not None and not modo_resumo:
+    if ultimo_avisado is not None and preco < ultimo_avisado:
         rodape.append(f"Último aviso: {P(ultimo_avisado)} — o preço caiu de novo")
     if cobertura and cobertura[0] < cobertura[1]:
         rodape.append(f"Preços conhecidos para {cobertura[0]} de {cobertura[1]} combinações de datas "
@@ -1170,6 +1170,9 @@ def processar_rota(rota, moeda, historico, buscar=None, montar=None,
         preco, resumo, cobertura = int(voo.price), resumir_voo(voo), (len(todos), len(combos))
 
     registros = consultas.setdefault(chave, [])
+    # menor preço já visto ANTES desta execução (consultas antigas sem "moeda" eram EUR)
+    anteriores = [r["preco"] for r in registros if r.get("moeda", "EUR") == moeda]
+    recorde_anterior = min(anteriores) if anteriores else None
     registros.append({
         "em": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "preco": preco,
@@ -1189,9 +1192,21 @@ def processar_rota(rota, moeda, historico, buscar=None, montar=None,
 
     if novo is None:
         historico.pop(chave, None)  # acima do alvo: a próxima queda avisa de novo
-    if not avisar and not modo_resumo:
+    # Alerta de recorde: igualou ou bateu o menor preço já visto. Não repete enquanto
+    # o preço continuar no recorde; se subir e voltar, avisa de novo.
+    recordes = historico.setdefault("_recorde", {})
+    bateu = recorde_anterior is not None and preco <= recorde_anterior
+    if recorde_anterior is None:
+        recordes[chave] = preco  # primeiro preço registrado: vira a referência, sem e-mail
+    elif not bateu:
+        recordes.pop(chave, None)
+    avisar_recorde = bateu and recordes.get(chave) != preco
+
+    if not avisar and not avisar_recorde and not modo_resumo:
         return None
     modo_resumo = modo_resumo and not avisar  # se também é alerta, o e-mail sai como alerta
+    if avisar_recorde:
+        modo_resumo = True  # mostra o contexto (últimos dias e menor já visto)
 
     # consultas antigas, sem o campo "moeda", foram feitas em EUR
     mesmos = [r for r in registros if r.get("moeda", "EUR") == moeda]
@@ -1199,9 +1214,17 @@ def processar_rota(rota, moeda, historico, buscar=None, montar=None,
     assunto, texto, html = montar_email(
         rota, combo, moeda, preco, resumo, link_busca(combo, moeda),
         anterior, estatisticas(mesmos), opcoes, modo_resumo, cobertura)
+    if avisar_recorde:
+        volta_a = f" → {_fmt_data(combo['volta'])[:5]}" if combo.get("volta") else ""
+        igual = " (igualou)" if preco == recorde_anterior else ""
+        assunto = (f"🔥 Menor preço já visto{igual}: {fmt_preco(preco, moeda)} · "
+                   f"{combo['origem']} → {combo['destino']} · {_fmt_data(combo['ida'])[:5]}{volta_a}")
+        print(f"[{chave}] menor preço já visto{igual}: {fmt_preco(preco, moeda)} "
+              f"(antes: {fmt_preco(recorde_anterior, moeda)})")
     return {
         "chave": chave, "assunto": assunto, "texto": texto, "html": html,
         "aviso": {"ultimo_preco_avisado": novo, "moeda": moeda} if avisar else None,
+        "recorde": preco if avisar_recorde else None,
     }
 
 
@@ -1306,6 +1329,8 @@ def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
             for secao in secoes:  # só grava o aviso depois que o e-mail saiu
                 if secao["aviso"]:
                     historico[secao["chave"]] = {**secao["aviso"], "avisado_em": agora}
+                if secao.get("recorde") is not None:
+                    historico.setdefault("_recorde", {})[secao["chave"]] = secao["recorde"]
             if modo_resumo:
                 historico["_resumo"] = {"enviado_em": agora}
         except Exception as e:
