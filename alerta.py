@@ -937,7 +937,7 @@ def _cartao_html(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats,
     )
 
 
-def enviar_email(assunto, corpo, html=None):
+def enviar_email(assunto, corpo, html=None, urgente=False):
     remetente = os.environ["EMAIL_REMETENTE"].strip()
     # A senha de app do Gmail aparece com espaços ("abcd efgh ijkl mnop") e o
     # Secret pode ter sido colado com quebra de linha: remove tudo isso.
@@ -961,6 +961,9 @@ def enviar_email(assunto, corpo, html=None):
     msg["Subject"] = assunto
     msg["From"] = remetente
     msg["To"] = ", ".join(destinos)
+    if urgente:  # alertas de preço: aparecem como "alta prioridade" no leitor de e-mail
+        msg["X-Priority"] = "1"
+        msg["Importance"] = "high"
     msg.set_content(corpo)
     if html:
         msg.add_alternative(html, subtype="html")
@@ -1323,7 +1326,12 @@ def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
     erro_email = False
     if secoes:
         try:
-            enviar(*juntar_secoes(secoes, config.get("titulo", "Alerta de passagens")))
+            urgente = any(s["aviso"] or s.get("recorde") is not None for s in secoes)
+            assunto, texto, html = juntar_secoes(secoes, config.get("titulo", "Alerta de passagens"))
+            if urgente:
+                enviar(assunto, texto, html, urgente=True)
+            else:
+                enviar(assunto, texto, html)
             print(f"E-mail enviado ({len(secoes)} rota(s)).")
             agora = datetime.now(timezone.utc).isoformat(timespec="seconds")
             for secao in secoes:  # só grava o aviso depois que o e-mail saiu
