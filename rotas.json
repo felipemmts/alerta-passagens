@@ -2,6 +2,7 @@
   "titulo": "Alerta de passagens",
   "moeda": "BRL",
   "queda_minima": 50,
+  "resumo_cada_horas": 48,
   "rotas": [
     {
       "nome": "Busca principal",

@@ -656,11 +656,20 @@ def resumir_voo(voo):
     }
 
 
-def estatisticas(consultas):
+def estatisticas(consultas, dias_recentes=2):
     precos = [c["preco"] for c in consultas]
     if not precos:
         return None
-    return {"n": len(precos), "min": min(precos), "mediana": int(statistics.median(precos))}
+    limite = (datetime.now(timezone.utc) - timedelta(days=dias_recentes)).isoformat()
+    recentes = [c["preco"] for c in consultas if c["em"] >= limite]
+    recorde = min(consultas, key=lambda c: (c["preco"], c["em"]))
+    return {
+        "n": len(precos), "min": min(precos), "mediana": int(statistics.median(precos)),
+        "dias_recentes": dias_recentes,
+        "recentes": ({"n": len(recentes), "min": min(recentes), "max": max(recentes),
+                      "mediana": int(statistics.median(recentes))} if recentes else None),
+        "recorde": recorde,
+    }
 
 
 def fmt_preco(valor, moeda):
@@ -686,6 +695,10 @@ def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=
     else:
         selo = "🔥 PREÇO EXCELENTE" if excelente and preco <= excelente else "✈️"
     assunto = f"{selo} {titulo}{trajeto} {P(preco)} (alvo {P(rota['preco_alvo'])})"
+    if modo_resumo:  # o resumo não fala de alvo: compara com os últimos dias
+        volta_a = f" → {_fmt_data(combo['volta'])[:5]}" if combo.get("volta") else ""
+        assunto = (f"📊 Resumo: melhor preço agora {P(preco)} · {trajeto} · "
+                   f"{_fmt_data(combo['ida'])[:5]}{volta_a}")
 
     datas = f"Ida {_fmt_data(combo['ida'])}" + (
         f" · Volta {_fmt_data(combo['volta'])}" if combo.get("volta") else " (só ida)")
@@ -696,8 +709,7 @@ def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=
     if excelente:
         faixa += f" (excelente: até {P(excelente)})"
     if modo_resumo:
-        chamada = (f"Resumo da busca: o melhor preço agora é {P(preco)}"
-                   + (" (abaixo do alvo)." if preco < rota["preco_alvo"] else " (ainda não está abaixo do alvo)."))
+        chamada = f"Resumo da busca: o melhor preço agora é {P(preco)}."
     else:
         chamada = f"Passagem abaixo do preço-alvo: {trajeto} por {P(preco)}"
 
@@ -730,6 +742,15 @@ def montar_email(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats=
             linhas.append(f"  {_fmt_data(c['ida'])}{volta}: {P(v.price)}  {l}")
     texto = "\n".join(linhas)
 
+    if stats and modo_resumo:
+        rec, r = stats.get("recentes"), stats.get("recorde")
+        if rec:
+            texto += (f"\n\nÚltimos {stats['dias_recentes']} dias: mínimo {P(rec['min'])}, mediana "
+                      f"{P(rec['mediana'])}, máximo {P(rec['max'])} ({rec['n']} consultas).")
+        if r:
+            texto += (f"\nMenor preço já visto: {P(r['preco'])} ({r['origem']} → {r['destino']}, "
+                      f"ida {_fmt_data(r['ida'])}" + (f", volta {_fmt_data(r['volta'])}" if r.get("volta") else "")
+                      + f", em {r['em'][:10]}).")
     if cobertura and cobertura[0] < cobertura[1]:
         texto += (f"\n\nPreços conhecidos para {cobertura[0]} de {cobertura[1]} combinações de datas; "
                   "as outras entram nas próximas buscas.")
@@ -772,7 +793,17 @@ def _cartao_html(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats,
 
     P = lambda v: e(fmt_preco(v, moeda))  # noqa: E731
     alvo, excelente = rota["preco_alvo"], rota.get("preco_excelente")
-    if excelente and preco <= excelente:
+    rec = (stats or {}).get("recentes") if modo_resumo else None
+    recorde = (stats or {}).get("recorde") if modo_resumo else None
+    if modo_resumo and recorde and preco <= recorde["preco"]:
+        selo, fundo, cor = "🔥 Menor preço já visto", "#fce8e6", "#c5221f"
+    elif rec and preco < rec["mediana"]:
+        selo, fundo, cor = (f"✓ Abaixo da média dos últimos {stats['dias_recentes']} dias "
+                            f"({fmt_preco(rec['mediana'], moeda)})"), "#e6f4ea", "#137333"
+    elif rec:
+        selo, fundo, cor = (f"Na média ou acima dos últimos {stats['dias_recentes']} dias "
+                            f"({fmt_preco(rec['mediana'], moeda)})"), "#f1f3f4", "#3c4043"
+    elif excelente and preco <= excelente:
         selo, fundo, cor = "🔥 Preço excelente", "#fce8e6", "#c5221f"
     elif preco < alvo:
         selo, fundo, cor = "✓ Abaixo do alvo", "#e6f4ea", "#137333"
@@ -834,12 +865,24 @@ def _cartao_html(rota, combo, moeda, preco, resumo, link, ultimo_avisado, stats,
                  f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">'
                  f'{"".join(linhas)}</table>')
 
-    rodape = [f"Alvo: abaixo de {P(alvo)}" + (f" · excelente até {P(excelente)}" if excelente else "")]
+    rodape = [] if modo_resumo else [
+        f"Alvo: abaixo de {P(alvo)}" + (f" · excelente até {P(excelente)}" if excelente else "")]
     if ultimo_avisado is not None and not modo_resumo:
         rodape.append(f"Último aviso: {P(ultimo_avisado)} — o preço caiu de novo")
     if cobertura and cobertura[0] < cobertura[1]:
         rodape.append(f"Preços conhecidos para {cobertura[0]} de {cobertura[1]} combinações de datas "
                       "(as outras entram nas próximas buscas)")
+    if stats and modo_resumo:
+        rec = stats.get("recentes")
+        if rec:
+            rodape.append(f"<b>Últimos {stats['dias_recentes']} dias:</b> mínimo {P(rec['min'])} · "
+                          f"mediana {P(rec['mediana'])} · máximo {P(rec['max'])} ({rec['n']} consultas)")
+        r = stats.get("recorde")
+        if r:
+            volta_r = f" → {_data_curta(r['volta'])}" if r.get("volta") else ""
+            visto = datetime.fromisoformat(r["em"]).astimezone(timezone(timedelta(hours=-3))).strftime("%d/%m")
+            rodape.append(f"<b>Menor preço já visto:</b> {P(r['preco'])} "
+                          f"({e(r['origem'])} → {e(r['destino'])}, {e(_data_curta(r['ida']))}{e(volta_r)}, em {visto})")
     if stats and stats["n"] > 1:
         rodape.append(f"Últimos {DIAS_CONSULTAS} dias: mínimo {P(stats['min'])} · "
                       f"mediana {P(stats['mediana'])} ({stats['n']} consultas)")
@@ -1119,6 +1162,7 @@ def processar_rota(rota, moeda, historico, buscar=None, montar=None,
         historico.pop(chave, None)  # acima do alvo: a próxima queda avisa de novo
     if not avisar and not modo_resumo:
         return None
+    modo_resumo = modo_resumo and not avisar  # se também é alerta, o e-mail sai como alerta
 
     # consultas antigas, sem o campo "moeda", foram feitas em EUR
     mesmos = [r for r in registros if r.get("moeda", "EUR") == moeda]
@@ -1128,7 +1172,7 @@ def processar_rota(rota, moeda, historico, buscar=None, montar=None,
         anterior, estatisticas(mesmos), opcoes, modo_resumo, cobertura)
     return {
         "chave": chave, "assunto": assunto, "texto": texto, "html": html,
-        "aviso": {"ultimo_preco_avisado": novo, "moeda": moeda} if avisar and not modo_resumo else None,
+        "aviso": {"ultimo_preco_avisado": novo, "moeda": moeda} if avisar else None,
     }
 
 
@@ -1149,11 +1193,21 @@ def juntar_secoes(secoes, titulo="Alerta de passagens"):
         f'color:#5f6368"><b style="color:#202124">✈️ {titulo}</b> · busca de {agora}</td></tr>'
         f'<tr><td>{cartoes}</td></tr>'
         f'<tr><td style="padding:20px 4px 0;{_FONTE};font-size:11px;line-height:1.6;color:#80868b">'
-        f'Preços do Google Flights no momento da busca; podem mudar. Datas e alvos ficam em '
+        f'Preços do Google Flights no momento da busca; podem mudar. Datas ficam em '
         f'rotas.json no repositório.</td></tr>'
         f'</table></td></tr></table></div>'
     )
     return assunto, texto, html
+
+
+def resumo_vencido(historico, horas):
+    """True se o último resumo periódico saiu há mais de `horas` horas (ou nunca)."""
+    if not horas:
+        return False
+    ultimo = historico.get("_resumo", {}).get("enviado_em")
+    if not ultimo:
+        return True
+    return datetime.now(timezone.utc) - datetime.fromisoformat(ultimo) >= timedelta(hours=horas) - timedelta(minutes=30)
 
 
 def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
@@ -1164,6 +1218,10 @@ def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
     historico = carregar_json(ARQ_HISTORICO, {})
     consultas = carregar_json(ARQ_CONSULTAS, {})
     progresso = carregar_json(ARQ_PROGRESSO, {}) if LOTE else None
+    # resumo periódico: sai a cada "resumo_cada_horas" mesmo sem novidade
+    if not modo_resumo and resumo_vencido(historico, config.get("resumo_cada_horas")):
+        modo_resumo = True
+        print("Resumo periódico: vence nesta execução.")
 
     ativas = [r for r in rotas if not rota_expirada(r, hoje)]
     for r in rotas:
@@ -1219,6 +1277,8 @@ def main(buscar=None, enviar=None, montar=None, hoje=None, modo_resumo=False):
             for secao in secoes:  # só grava o aviso depois que o e-mail saiu
                 if secao["aviso"]:
                     historico[secao["chave"]] = {**secao["aviso"], "avisado_em": agora}
+            if modo_resumo:
+                historico["_resumo"] = {"enviado_em": agora}
         except Exception as e:
             erro_email = True
             print(f"ERRO no e-mail: {e}", file=sys.stderr)
