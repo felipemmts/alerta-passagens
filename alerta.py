@@ -403,9 +403,26 @@ def _buscar_com_navegador(params):
     from urllib.parse import urlencode
 
     url = "https://www.google.com/travel/flights/search?" + urlencode(params)
-    respostas = []
+    respostas, corpos = [], []
     pagina = _navegador_aberto().new_page()
+
+    def interceptar(route):
+        # A resposta chega aos poucos e, lida depois, às vezes vem vazia ("No data
+        # found for resource"): por isso o corpo é capturado aqui, ao passar.
+        try:
+            r = route.fetch(timeout=TIMEOUT_SEGUNDOS * 1000)
+            corpo = r.text()
+        except Exception:
+            route.fallback()
+            return
+        corpos.append(corpo)
+        route.fulfill(response=r, body=corpo)
+
+    def textos():  # o que foi capturado ao passar; a leitura posterior fica de reserva
+        return list(corpos) if corpos else [_texto(r) for r in list(respostas)]
+
     try:
+        pagina.route(re.compile(r"GetShoppingResults"), interceptar)
         pagina.on("response", lambda r: respostas.append(r) if "GetShoppingResults" in r.url else None)
         pagina.goto(url, wait_until="domcontentloaded", timeout=TIMEOUT_SEGUNDOS * 1000)
         botao = pagina.get_by_role("button", name=re.compile(
@@ -413,18 +430,19 @@ def _buscar_com_navegador(params):
         if botao.count():  # página de consentimento de cookies (só na primeira vez)
             botao.first.click(timeout=5000)
         voos, depois_da_resposta = [], 0
-        for _ in range(30):  # espera os resultados chegarem (até ~15 s)
+        for _ in range(50):  # espera os resultados chegarem (até ~25 s)
             pagina.wait_for_timeout(500)
-            voos = _voos_das_respostas(respostas)
+            voos = _voos_dos_textos(textos())
             if voos:
-                pagina.wait_for_timeout(800)  # deixa chegar o resto da lista
-                voos = _voos_das_respostas(respostas)
+                pagina.wait_for_timeout(1000)  # deixa chegar o resto da lista
+                voos = _voos_dos_textos(textos())
                 break
-            if respostas:
+            if respostas or corpos:
                 depois_da_resposta += 1
-                if depois_da_resposta >= 6:  # respondeu há 3 s e sem voos: desiste
+                if depois_da_resposta >= 8:  # respondeu há 4 s e sem voos: desiste
                     break
-        if not voos and not respostas:
+        respondeu = bool(respostas or corpos)
+        if not voos and not respondeu:
             # nenhuma chamada à parte: às vezes os voos vêm na própria página
             try:
                 voos = _extrair(pagina.content())
@@ -437,25 +455,36 @@ def _buscar_com_navegador(params):
                 except Exception as e:
                     corpo = f"(sem texto: {e})"
                 print(f"  diagnóstico: url={pagina.url[:90]!r} título={pagina.title()!r} texto={corpo!r}")
-        com_erro = not voos and any("ErrorResponse" in _texto(r) for r in respostas)
-        if not voos and respostas and not com_erro:  # respondeu, mas não entendemos: guarda para análise
+        todos_textos = textos()
+        com_erro = not voos and any("ErrorResponse" in t for t in todos_textos)
+        if not voos and respondeu and not com_erro:  # respondeu, mas não entendemos: guarda para análise
             PASTA_DEBUG.mkdir(exist_ok=True)
             n = len(list(PASTA_DEBUG.glob("navegador_*.txt")))
             if n < 5:
                 (PASTA_DEBUG / f"navegador_{n}.txt").write_text(
-                    url + "\n\n" + "\n---\n".join(_texto(r) for r in respostas), encoding="utf-8")
+                    url + "\n\n" + "\n---\n".join(todos_textos), encoding="utf-8")
             if n == 0:
-                print(f"  diagnóstico navegador: {_texto(respostas[0])[:400]!r}")
+                print(f"  diagnóstico navegador: {(todos_textos or [''])[0][:400]!r}")
     finally:
         pagina.close()
     voos = [v for v in voos if v.price]
     if com_erro:
         # erro passageiro do Google (o mesmo "errorHasStatus" das consultas diretas)
         raise RuntimeError("o Google respondeu com erro (navegador)")
-    if not voos and not respostas:
-        raise RuntimeError("o Google não respondeu a tempo (navegador)")  # tenta de novo na 2ª rodada
+    if not voos and not respondeu:
+        raise RuntimeError("o Google não respondeu a tempo (navegador)")
     if not voos:
-        raise SemVoos(f"o Google não mostra voos para estas datas (navegador: {len(respostas)} resposta(s))")
+        raise SemVoos(f"o Google não mostra voos para estas datas (navegador: {len(todos_textos)} resposta(s))")
+    return voos
+
+
+def _voos_dos_textos(textos):
+    voos = []
+    for t in textos:
+        try:
+            voos.extend(voos_da_resposta_rpc(t))
+        except Exception:
+            continue  # resposta incompleta ou em outro formato
     return voos
 
 
