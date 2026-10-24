@@ -14,14 +14,14 @@ Consulta o Google Flights pelo GitHub Actions (via [fast-flights](https://github
 - Resumo periódico (`resumo_cada_horas` em `rotas.json`, ex.: 48): mesmo sem novidade, manda um e-mail com o melhor preço do momento, mínimo/mediana/máximo dos últimos 2 dias e o menor preço já visto.
 - O e-mail traz um botão que abre a busca no Google Flights e as 5 combinações mais baratas, cada uma com seu link. Quando há mais de uma busca com novidade, sai um e-mail só.
 - Quando a consulta direta não traz voos (acontece em algumas rotas e em estadias longas), a busca é feita num navegador (Playwright). `navegador_direto: true` pula a consulta direta.
-- Busca em lotes (`LOTE` no workflow): cada execução consulta só parte das combinações, salteadas pelo período todo, e a próxima continua de onde parou (`progresso.json`). O e-mail considera os preços das últimas 36 h de todos os lotes.
+- Cada execução do workflow fica ~5h30 buscando em rodadas a cada 15–25 min (o agendamento a cada 3 h só emenda uma execução na outra). Em cada rodada, busca em lotes (`LOTE`): consulta só parte das combinações, salteadas pelo período todo, e a próxima continua de onde parou (`progresso.json`). O e-mail considera os preços das últimas 36 h de todos os lotes.
 - Entre uma busca e outra há uma pausa aleatória (`PAUSA_SEGUNDOS` a `PAUSA_MAX_SEGUNDOS`), e o navegador se apresenta como um Chrome comum: buscas rápidas e em ritmo fixo fazem o Google travar.
 - Se o Google falhar 3 vezes seguidas, a execução para na hora e o que faltou volta para a fila. Há também um prazo (`PRAZO_MINUTOS`): perto dele, para de buscar e envia o que já tem.
 - `historico.json`: último preço avisado por busca.
 - `progresso.json`: fila de combinações ainda não consultadas no ciclo e últimos preços de cada uma.
 - `consultas.json`: menor preço de cada execução, guardado por 90 dias. O e-mail mostra o mínimo e a mediana do período.
 - `ultima_execucao.log`: log da última execução.
-- O workflow faz commit desses arquivos de volta no repositório.
+- O workflow faz commit desses arquivos de volta no repositório a cada rodada (`salvar.sh`).
 
 Exemplo de busca: ida de Lisboa para Vancouver em qualquer dia de 10 a 15/03, ficando 20 ou 25 dias:
 

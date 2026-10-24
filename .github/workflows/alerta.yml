@@ -2,13 +2,14 @@ name: Alerta de passagens
 
 on:
   schedule:
-    # Toda hora, com poucas buscas bem espaçadas: o Google trava menos do que com
-    # rajadas, e um preço bom é visto em até 1 hora.
-    - cron: "17 * * * *"
+    # Cada execução fica ~5h50 buscando em rodadas espaçadas. O agendamento a cada
+    # 3 h só garante que a próxima comece logo que a anterior acabar (o GitHub
+    # atrasa e descarta agendamentos frequentes, então não dá para depender dele).
+    - cron: "17 */3 * * *"
   workflow_dispatch:
     inputs:
       resumo:
-        description: "Buscar e mandar e-mail com os preços atuais, mesmo acima do alvo"
+        description: "Buscar e mandar e-mail com os preços atuais, mesmo acima do alvo (uma rodada só)"
         type: boolean
         default: false
       teste_email:
@@ -21,12 +22,12 @@ permissions:
 
 concurrency:
   group: alerta-passagens
-  cancel-in-progress: false
+  cancel-in-progress: false  # a próxima espera a atual terminar
 
 jobs:
   verificar:
     runs-on: ubuntu-24.04  # fixo: a instalação do navegador (Playwright) falha no Ubuntu 26
-    timeout-minutes: 30
+    timeout-minutes: 355   # o máximo do GitHub é 360
     steps:
       - uses: actions/checkout@v5
 
@@ -40,20 +41,39 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
 
-      - name: Verificar preços
+      - name: Buscar preços em rodadas
         env:
           EMAIL_REMETENTE: ${{ secrets.EMAIL_REMETENTE }}
           EMAIL_SENHA: ${{ secrets.EMAIL_SENHA }}
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
           TESTE_EMAIL: ${{ inputs.teste_email }}
           RESUMO: ${{ inputs.resumo }}
-          PRAZO_MINUTOS: "18"  # para de buscar e envia o que tem antes do timeout do job
+          PRAZO_MINUTOS: "15"        # limite de cada rodada
           USAR_NAVEGADOR: "true"
-          LOTE: "6"  # poucas combinações por execução; a próxima (1 h depois) continua de onde esta parou
+          LOTE: "5"                  # combinações por rodada; a próxima continua de onde esta parou
           PAUSA_SEGUNDOS: "60"       # pausa aleatória de 1 a 2 min entre buscas:
           PAUSA_MAX_SEGUNDOS: "120"  # ritmo de pessoa, para o Google não travar
-        shell: bash  # usa pipefail: o passo falha se o script falhar
-        run: python -u alerta.py 2>&1 | tee ultima_execucao.log
+        shell: bash
+        run: |
+          # Botões manuais (resumo / teste de e-mail): uma rodada só.
+          if [ "${RESUMO}" = "true" ] || [ "${TESTE_EMAIL}" = "true" ]; then
+            python -u alerta.py 2>&1 | tee ultima_execucao.log || true
+            ./salvar.sh || true
+            exit 0
+          fi
+          fim=$((SECONDS + 330 * 60))   # ~5h30 de rodadas
+          rodada=0
+          while [ $SECONDS -lt $fim ]; do
+            rodada=$((rodada + 1))
+            echo "::group::Rodada $rodada ($(date -u +%H:%M) UTC)"
+            python -u alerta.py 2>&1 | tee ultima_execucao.log || echo "rodada $rodada terminou com erro"
+            ./salvar.sh || true
+            echo "::endgroup::"
+            # intervalo aleatório de 15 a 25 min até a próxima rodada
+            espera=$((900 + RANDOM % 600))
+            [ $((SECONDS + espera)) -lt $fim ] || break
+            sleep $espera
+          done
 
       - name: Guardar páginas de diagnóstico
         if: always() && hashFiles('debug/*') != ''
@@ -65,18 +85,4 @@ jobs:
 
       - name: Salvar histórico e consultas
         if: always()
-        run: |
-          if git diff --quiet -- historico.json consultas.json progresso.json ultima_execucao.log && git ls-files --error-unmatch ultima_execucao.log >/dev/null 2>&1; then
-            echo "Histórico sem alterações."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          touch progresso.json
-          git add historico.json consultas.json progresso.json ultima_execucao.log
-          git commit -m "Atualiza histórico e consultas de preços [skip ci]"
-          # os dois alertas podem commitar ao mesmo tempo: tenta de novo se o push for recusado
-          for i in 1 2 3 4; do
-            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
-            sleep $((i * 5))
-          done
+        run: ./salvar.sh
