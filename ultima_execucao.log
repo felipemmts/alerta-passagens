@@ -1,3 +1,9 @@
-[Busca principal]   FLN→MAD ida 2026-12-26 volta 2027-02-13: R$ 7.640
-[Busca principal]   lote: 1 preço(s) de 1; fila: 0 restante(s); preços válidos: 18 de 76
-[Busca principal] menor preço: R$ 6.160 em FLN→BCN ida 2026-12-31 volta 2027-02-16 (alvo R$ 6.100, último aviso nenhum)
+[Busca principal]   novo ciclo: 76 combinações em lotes de 6
+[Busca principal]   FLN→BCN ida 2026-12-26 volta 2027-02-11: sem resposta do Google (o Google respondeu com erro (navegador))
+[Busca principal]   FLN→MAD ida 2026-12-27 volta 2027-02-12: sem resposta do Google (o Google respondeu com erro (navegador))
+[Busca principal]   FLN→BCN ida 2026-12-28 volta 2027-02-15: R$ 7.498
+[Busca principal]   FLN→MAD ida 2026-12-29 volta 2027-02-18: sem resposta do Google (o Google respondeu com erro (navegador))
+[Busca principal]   FLN→BCN ida 2026-12-31 volta 2027-02-16: sem resposta do Google (o Google respondeu com erro (navegador))
+[Busca principal]   FLN→MAD ida 2027-01-01 volta 2027-02-21: sem resposta do Google (o Google respondeu com erro (navegador))
+[Busca principal]   lote: 1 preço(s) de 6; fila: 75 restante(s); preços válidos: 8 de 76
+[Busca principal] menor preço: R$ 6.173 em FLN→BCN ida 2026-12-31 volta 2027-02-22 (alvo R$ 6.100, último aviso nenhum)
