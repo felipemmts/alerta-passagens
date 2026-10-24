@@ -2,11 +2,9 @@ name: Alerta de passagens
 
 on:
   schedule:
-    # Horários em UTC (Brasília = UTC-3). As tarifas novas chegam aos sistemas de
-    # reserva em lotes (por volta de 10h, 13h, 16h e 20h de Nova York) e levam 1 h ou
-    # mais para aparecer: 4 execuções ficam logo depois de cada lote, mais 2 no meio.
-    - cron: "13 2,16,19,22 * * *"  # 23h13, 13h13, 16h13 e 19h13 em Brasília
-    - cron: "43 6,11 * * *"        # 3h43 e 8h43 em Brasília
+    # Toda hora, com poucas buscas bem espaçadas: o Google trava menos do que com
+    # rajadas, e um preço bom é visto em até 1 hora.
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       resumo:
@@ -49,11 +47,11 @@ jobs:
           EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
           TESTE_EMAIL: ${{ inputs.teste_email }}
           RESUMO: ${{ inputs.resumo }}
-          PRAZO_MINUTOS: "20"  # para de buscar e envia o que tem antes do timeout do job
+          PRAZO_MINUTOS: "18"  # para de buscar e envia o que tem antes do timeout do job
           USAR_NAVEGADOR: "true"
-          LOTE: "20"  # combinações por execução; a próxima continua de onde esta parou
-          PAUSA_SEGUNDOS: "20"      # pausa aleatória entre 20 e 45 s entre buscas:
-          PAUSA_MAX_SEGUNDOS: "45"  # ritmo de pessoa, para o Google não travar
+          LOTE: "6"  # poucas combinações por execução; a próxima (1 h depois) continua de onde esta parou
+          PAUSA_SEGUNDOS: "60"       # pausa aleatória de 1 a 2 min entre buscas:
+          PAUSA_MAX_SEGUNDOS: "120"  # ritmo de pessoa, para o Google não travar
         shell: bash  # usa pipefail: o passo falha se o script falhar
         run: python -u alerta.py 2>&1 | tee ultima_execucao.log
 
