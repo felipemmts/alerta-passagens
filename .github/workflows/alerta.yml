@@ -36,6 +36,30 @@ jobs:
           python-version: "3.12"
           cache: pip
 
+      - name: Carregar estado (branch dados)
+        run: |
+          # Histórico, consultas e fila ficam no branch "dados", fora da main.
+          estado="historico.json consultas.json progresso.json ultima_execucao.log"
+          if git ls-files --error-unmatch progresso.json >/dev/null 2>&1; then
+            # Migração (uma vez só): o estado ainda está na main e é o mais recente.
+            # Usa esses arquivos e tira da main, que passa a ter só código.
+            echo "Migrando o estado da main para o branch dados."
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git rm -q --cached --ignore-unmatch $estado
+            printf '%s\n' $estado >> .gitignore
+            git add .gitignore
+            git commit -q -m "Move o estado do alerta para o branch dados [skip ci]"
+            git push -q origin "HEAD:${GITHUB_REF_NAME}" || echo "Não consegui limpar a main (segue assim mesmo)."
+          elif git fetch -q origin +refs/heads/dados:refs/remotes/origin/dados; then
+            git checkout origin/dados -- historico.json consultas.json progresso.json
+            git reset -q  # não deixa os arquivos marcados para commit na main
+          else
+            echo "Branch dados ainda não existe: começando do zero."
+          fi
+          # cópia do script de salvamento, para não ser afetada se a main mudar durante a execução
+          cp salvar_dados.sh "$RUNNER_TEMP/salvar.sh"
+
       - name: Instalar dependências
         run: |
           pip install -r requirements.txt
@@ -58,7 +82,7 @@ jobs:
           # Botões manuais (resumo / teste de e-mail): uma rodada só.
           if [ "${RESUMO}" = "true" ] || [ "${TESTE_EMAIL}" = "true" ]; then
             python -u alerta.py 2>&1 | tee ultima_execucao.log || true
-            ./salvar.sh || true
+            "$RUNNER_TEMP/salvar.sh" || true
             exit 0
           fi
           fim=$((SECONDS + 330 * 60))   # ~5h30 de rodadas
@@ -67,7 +91,7 @@ jobs:
             rodada=$((rodada + 1))
             echo "::group::Rodada $rodada ($(date -u +%H:%M) UTC)"
             python -u alerta.py 2>&1 | tee ultima_execucao.log || echo "rodada $rodada terminou com erro"
-            ./salvar.sh || true
+            "$RUNNER_TEMP/salvar.sh" || true
             echo "::endgroup::"
             # intervalo aleatório de 15 a 25 min até a próxima rodada
             espera=$((900 + RANDOM % 600))
@@ -85,4 +109,4 @@ jobs:
 
       - name: Salvar histórico e consultas
         if: always()
-        run: ./salvar.sh
+        run: bash "$RUNNER_TEMP/salvar.sh"
