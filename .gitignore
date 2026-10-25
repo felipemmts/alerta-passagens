@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 .venv/
 debug/
+historico.json
+consultas.json
+progresso.json
+ultima_execucao.log

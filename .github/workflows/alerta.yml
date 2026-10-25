@@ -39,19 +39,7 @@ jobs:
       - name: Carregar estado (branch dados)
         run: |
           # Histórico, consultas e fila ficam no branch "dados", fora da main.
-          estado="historico.json consultas.json progresso.json ultima_execucao.log"
-          if git ls-files --error-unmatch progresso.json >/dev/null 2>&1; then
-            # Migração (uma vez só): o estado ainda está na main e é o mais recente.
-            # Usa esses arquivos e tira da main, que passa a ter só código.
-            echo "Migrando o estado da main para o branch dados."
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git rm -q --cached --ignore-unmatch $estado
-            printf '%s\n' $estado >> .gitignore
-            git add .gitignore
-            git commit -q -m "Move o estado do alerta para o branch dados [skip ci]"
-            git push -q origin "HEAD:${GITHUB_REF_NAME}" || echo "Não consegui limpar a main (segue assim mesmo)."
-          elif git fetch -q origin +refs/heads/dados:refs/remotes/origin/dados; then
+          if git fetch -q origin +refs/heads/dados:refs/remotes/origin/dados; then
             git checkout origin/dados -- historico.json consultas.json progresso.json
             git reset -q  # não deixa os arquivos marcados para commit na main
           else
